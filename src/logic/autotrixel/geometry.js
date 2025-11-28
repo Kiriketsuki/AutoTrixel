@@ -24,37 +24,51 @@ export function pixelToGrid(x, y, triHeight, W_half, config) {
     const localX = (x % W_half) / W_half;
     const localY = (y % triHeight) / triHeight;
     let finalCol = -1;
-    const parity = (colApprox + row) % 2;
+
+    // Parity check: (row + col) % 2
+    // Even/Even (0+0=0) -> Type A (x+y=1)
+    // Even/Odd (0+1=1) -> Type B (y=x)
+    const parity = Math.abs(row + colApprox) % 2;
 
     if (parity === 0) {
-        const isEvenRow = row % 2 === 0;
-        if (isEvenRow) {
-            if (colApprox % 2 === 0) {
-                finalCol = localX + localY >= 1 ? colApprox : colApprox - 1;
-            } else {
-                finalCol = localY >= localX ? colApprox - 1 : colApprox;
-            }
-        } else {
-            if (colApprox % 2 === 0) {
-                finalCol = localX >= localY ? colApprox : colApprox - 1;
-            } else {
-                finalCol = localX + localY <= 1 ? colApprox - 1 : colApprox;
-            }
-        }
+        // Type A: Diagonal /
+        // Top-Left (x+y < 1) -> colApprox - 1
+        // Bottom-Right (x+y > 1) -> colApprox
+        finalCol = localX + localY < 1 ? colApprox - 1 : colApprox;
     } else {
-        const isEvenRow = row % 2 === 0;
-        if (isEvenRow) {
-            if (colApprox % 2 !== 0) {
-                finalCol = localX + localY >= 1 ? colApprox : colApprox - 1;
-            } else {
-                finalCol = localY >= localX ? colApprox - 1 : colApprox;
-            }
-        } else {
-            if (colApprox % 2 !== 0) {
-                finalCol = localX >= localY ? colApprox : colApprox - 1;
-            } else {
-                finalCol = localX + localY <= 1 ? colApprox - 1 : colApprox;
-            }
+        // Type B: Diagonal \
+        // Top-Right (y < x) -> colApprox
+        // Bottom-Left (y > x) -> colApprox - 1
+        finalCol = localY > localX ? colApprox - 1 : colApprox;
+    }
+
+    // Robustness check: Verify point is actually inside the deduced triangle
+    const checkTriangle = (r, c) => {
+        if (r < 0 || r >= config.heightTriangles || c < 0 || c >= config.widthTriangles) return false;
+        const vertices = getTriangleVertices(r, c, triHeight, W_half);
+        const { u, v, w } = getBarycentric({ x, y }, vertices[0], vertices[1], vertices[2]);
+        const epsilon = -0.001; // Tolerance for edge cases
+        return u >= epsilon && v >= epsilon && w >= epsilon;
+    };
+
+    if (checkTriangle(row, finalCol)) {
+        return { r: row, c: finalCol };
+    }
+
+    // If not in triangle (e.g. edge cases), check neighbors
+    // Prioritize the other half of the current rectangle
+    const altCol = finalCol === colApprox ? colApprox - 1 : colApprox;
+    const neighbors = [
+        { r: row, c: altCol },
+        { r: row, c: finalCol - 1 },
+        { r: row, c: finalCol + 1 },
+        { r: row - 1, c: finalCol },
+        { r: row + 1, c: finalCol },
+    ];
+
+    for (const n of neighbors) {
+        if (checkTriangle(n.r, n.c)) {
+            return n;
         }
     }
 
