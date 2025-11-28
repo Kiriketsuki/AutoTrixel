@@ -5,6 +5,7 @@
     import GridControls from "./components/GridControls.vue";
     import BackgroundControls from "./components/BackgroundControls.vue";
     import ToolsControl from "./components/ToolsControl.vue";
+    import VersionBadge from "./components/VersionBadge.vue";
 
     const appRoot = ref(null);
     const controlMode = ref("canvas"); // 'canvas' or 'background'
@@ -79,6 +80,7 @@
                     <path d="M12 2L1 21h22L12 2zm0 3.516L19.297 19H4.703L12 5.516z" />
                 </svg>
                 AutoTrixel
+                <VersionBadge />
             </h1>
 
             <div class="tutorial-box">
