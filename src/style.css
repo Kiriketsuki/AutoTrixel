@@ -100,53 +100,6 @@ body {
     touch-action: none;
 }
 
-#sidebar {
-    width: 320px;
-    min-width: 320px;
-    background-color: var(--panel-bg);
-    border-right: 1px solid var(--border);
-    display: flex;
-    flex-direction: column;
-    padding: 15px;
-    gap: 8px;
-    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
-    z-index: 20;
-    overflow-y: auto;
-    transition: margin-left 0.3s ease-in-out;
-    touch-action: pan-y;
-}
-
-body.sidebar-closed #sidebar {
-    margin-left: -321px;
-}
-
-#sidebarToggle {
-    position: fixed;
-    top: 10px;
-    left: 330px;
-    z-index: 30;
-    background: var(--color-secondary);
-    border: 1px solid var(--border);
-    color: var(--color-text-main);
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-    transition: left 0.3s ease-in-out, transform 0.2s;
-}
-
-#sidebarToggle:hover {
-    transform: scale(1.1);
-}
-
-body.sidebar-closed #sidebarToggle {
-    left: 10px;
-}
-
 h1 {
     font-size: 1.4rem;
     margin: 0;
