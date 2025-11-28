@@ -42,6 +42,12 @@
                 @click="setTool('picker')">
                 🧪 Pick
             </button>
+            <button
+                class="tool-btn"
+                id="tool-subdivide"
+                @click="setTool('subdivide')">
+                ◭ Subdivide
+            </button>
         </div>
         <button
             class="undo-btn"
