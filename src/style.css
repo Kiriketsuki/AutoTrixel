@@ -467,3 +467,28 @@ canvas {
     opacity: 1;
     transform: translateY(0);
 }
+
+.style-btn {
+    background: var(--color-black);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 10px;
+    cursor: pointer;
+    color: var(--color-white-dark);
+    transition: all 0.2s;
+}
+
+.style-btn:hover {
+    border-color: var(--accent);
+    color: var(--color-white);
+}
+
+.style-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--color-white);
+}

@@ -977,7 +977,13 @@ export function createAutoTrixel(rootElement) {
         });
 
         subGridColorPicker.addEventListener("input", (e) => {
-            config.subGridColor = e.target.value;
+            // Resolve CSS variable if needed
+            let color = e.target.value;
+            if (color.startsWith("var(")) {
+                const varName = color.match(/var\(([^)]+)\)/)[1];
+                color = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+            }
+            config.subGridColor = color;
             fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
         });
 

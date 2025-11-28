@@ -11,9 +11,9 @@ export const DEFAULT_CONFIG = {
     gridStyle: "solid",
     gridThickness: 0.5,
     gridOpacity: 0.2,
-    subGridStyle: "solid",
+    subGridStyle: "dashed",
     subGridThickness: 0.5,
     subGridOpacity: 1,
     showSubGrid: true,
-    subGridColor: "#444444",
+    subGridColor: "#D2D1CA",
 };
