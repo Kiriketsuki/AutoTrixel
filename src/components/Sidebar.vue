@@ -77,7 +77,7 @@
                 src="/AutoTrixel.svg"
                 alt="AutoTrixel Logo"
                 class="w-8 h-8" />
-            <span>AutoTrixel</span>
+            <span>Auto<span class="font-black">Trixel</span></span>
             <VersionBadge />
         </h1>
 
