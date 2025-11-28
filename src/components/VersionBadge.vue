@@ -3,20 +3,5 @@
 </script>
 
 <template>
-    <span class="version-badge">v{{ version }}</span>
+    <span class="inline-block text-[0.5rem] font-medium text-white bg-secondary px-1.5 py-0.5 rounded ml-2 align-middle border border-black-light">v{{ version }}</span>
 </template>
-
-<style scoped>
-    .version-badge {
-        display: inline-block;
-        font-size: 0.5rem;
-        font-weight: 500;
-        color: var(--text-secondary);
-        background-color: var(--bg-secondary);
-        padding: 2px 6px;
-        border-radius: 4px;
-        margin-left: 8px;
-        vertical-align: middle;
-        border: 1px solid var(--border-color);
-    }
-</style>
