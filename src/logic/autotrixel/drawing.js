@@ -80,7 +80,7 @@ export function fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_hal
     });
 
     if (config.showGrid) {
-        drawGridLines(artCtx, artCanvas, config, triHeight, W_half);
+        drawGridLines(artCtx, artCanvas, config, triHeight, W_half, gridData);
     }
 }
 
@@ -118,11 +118,26 @@ export function drawCursor(cursorCtx, cursorCanvas, hoveredCells, currentTool, t
     cursorCtx.shadowBlur = 0;
 }
 
-export function drawGridLines(ctx, canvas, config, triHeight, W_half) {
+export function drawGridLines(ctx, canvas, config, triHeight, W_half, gridData) {
     if (config.widthTriangles * config.heightTriangles > 400000) return;
 
+    const setStyle = (style, thickness) => {
+        ctx.lineWidth = thickness;
+        if (style === "dashed") {
+            ctx.setLineDash([thickness * 4, thickness * 4]);
+        } else if (style === "dotted") {
+            ctx.setLineDash([thickness, thickness * 2]);
+        } else {
+            ctx.setLineDash([]);
+        }
+    };
+
+    // Draw Main Grid
+    ctx.save();
     ctx.strokeStyle = config.gridColor;
-    ctx.lineWidth = 0.5;
+    ctx.globalAlpha = config.gridOpacity;
+    setStyle(config.gridStyle, config.gridThickness);
+
     ctx.beginPath();
 
     for (let r = 0; r <= config.heightTriangles; r++) {
@@ -147,4 +162,48 @@ export function drawGridLines(ctx, canvas, config, triHeight, W_half) {
         }
     }
     ctx.stroke();
+    ctx.restore();
+
+    // Draw Sub Grid
+    if (config.showSubGrid && gridData) {
+        ctx.save();
+        ctx.strokeStyle = config.subGridColor;
+        ctx.globalAlpha = config.subGridOpacity;
+        setStyle(config.subGridStyle, config.subGridThickness);
+
+        ctx.beginPath();
+
+        Object.keys(gridData).forEach((key) => {
+            const cell = gridData[key];
+            if (cell && cell.subdivided) {
+                const [r, c] = key.split(",").map(Number);
+                const vertices = getTriangleVertices(r, c, triHeight, W_half);
+                const [v0, v1, v2] = vertices;
+
+                const m01 = { x: (v0.x + v1.x) / 2, y: (v0.y + v1.y) / 2 };
+                const m12 = { x: (v1.x + v2.x) / 2, y: (v1.y + v2.y) / 2 };
+                const m20 = { x: (v2.x + v0.x) / 2, y: (v2.y + v0.y) / 2 };
+
+                // Draw the inner triangle connecting midpoints
+                ctx.moveTo(m01.x, m01.y);
+                ctx.lineTo(m12.x, m12.y);
+                ctx.lineTo(m20.x, m20.y);
+                ctx.closePath();
+
+                // Also need to draw lines from vertices to midpoints?
+                // No, the main grid handles the outer edges.
+                // The inner triangle (m01-m12-m20) divides the main triangle into 4.
+                // Wait, the 4 triangles are:
+                // 1. v0-m01-m20
+                // 2. m01-v1-m12
+                // 3. m20-m12-v2
+                // 4. m01-m12-m20 (center)
+                // The lines needed to separate them are indeed the edges of the center triangle (m01-m12-m20).
+                // So drawing the triangle m01-m12-m20 is correct.
+            }
+        });
+
+        ctx.stroke();
+        ctx.restore();
+    }
 }

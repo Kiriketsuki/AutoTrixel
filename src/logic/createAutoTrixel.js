@@ -47,6 +47,18 @@ export function createAutoTrixel(rootElement) {
     const heightNumber = select("#heightNumber");
     const gridToggle = select("#gridToggle");
     const gridColorPicker = select("#gridColorPicker");
+    const gridStyleSelect = select("#gridStyleSelect");
+    const gridThicknessSlider = select("#gridThicknessSlider");
+    const gridOpacitySlider = select("#gridOpacitySlider");
+    const subGridStyleSelect = select("#subGridStyleSelect");
+    const subGridThicknessSlider = select("#subGridThicknessSlider");
+    const subGridOpacitySlider = select("#subGridOpacitySlider");
+    const subGridToggle = select("#subGridToggle");
+    const subGridColorPicker = select("#subGridColorPicker");
+    const gridThicknessVal = select("#gridThicknessVal");
+    const gridOpacityVal = select("#gridOpacityVal");
+    const subGridThicknessVal = select("#subGridThicknessVal");
+    const subGridOpacityVal = select("#subGridOpacityVal");
     const exportGridToggle = select("#exportGridToggle");
     const btnUndo = select("#btnUndo");
     const toolButtons = Array.from(rootElement.querySelectorAll(".tool-btn"));
@@ -910,6 +922,56 @@ export function createAutoTrixel(rootElement) {
 
         gridColorPicker.addEventListener("input", (e) => {
             config.gridColor = e.target.value;
+            fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
+        });
+
+        gridStyleSelect.addEventListener("change", (e) => {
+            config.gridStyle = e.target.value;
+            fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
+        });
+
+        gridThicknessSlider.addEventListener("input", (e) => {
+            let val = parseFloat(e.target.value);
+            val = clamp(val, 0.1, 1.5);
+            config.gridThickness = val;
+            gridThicknessVal.innerText = val;
+            fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
+        });
+
+        gridOpacitySlider.addEventListener("input", (e) => {
+            const val = parseFloat(e.target.value);
+            config.gridOpacity = val;
+            gridOpacityVal.innerText = val;
+            fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
+        });
+
+        subGridStyleSelect.addEventListener("change", (e) => {
+            config.subGridStyle = e.target.value;
+            fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
+        });
+
+        subGridThicknessSlider.addEventListener("input", (e) => {
+            let val = parseFloat(e.target.value);
+            val = clamp(val, 0.1, 1.5);
+            config.subGridThickness = val;
+            subGridThicknessVal.innerText = val;
+            fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
+        });
+
+        subGridOpacitySlider.addEventListener("input", (e) => {
+            const val = parseFloat(e.target.value);
+            config.subGridOpacity = val;
+            subGridOpacityVal.innerText = val;
+            fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
+        });
+
+        subGridToggle.addEventListener("change", (e) => {
+            config.showSubGrid = e.target.checked;
+            fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
+        });
+
+        subGridColorPicker.addEventListener("input", (e) => {
+            config.subGridColor = e.target.value;
             fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
         });
 
