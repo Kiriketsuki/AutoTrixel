@@ -100,12 +100,16 @@ jobs:
                     exit 1
                   fi
 
-            - name: Update VERSION file
+            - name: Update VERSION file and package.json
               if: steps.bump_type.outputs.bump_type != 'none'
               run: |
                   NEW_VERSION="${{ steps.new_version.outputs.new }}"
                   echo "$NEW_VERSION" > VERSION
-                  echo "Updated VERSION file to $NEW_VERSION"
+
+                  # Update package.json version
+                  sed -i "s/\"version\": \".*\"/\"version\": \"$NEW_VERSION\"/" package.json
+
+                  echo "Updated VERSION file and package.json to $NEW_VERSION"
 
             - name: Commit version bump
               if: steps.bump_type.outputs.bump_type != 'none'
@@ -115,7 +119,7 @@ jobs:
 
                   git config user.name "github-actions[bot]"
                   git config user.email "github-actions[bot]@users.noreply.github.com"
-                  git add VERSION
+                  git add VERSION package.json
                   git commit -m "chore: bump version to $NEW_VERSION [skip ci]
 
                   Automatic $BUMP_TYPE version bump after merging ${{ github.head_ref }}"
