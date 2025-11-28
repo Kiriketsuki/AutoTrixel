@@ -128,7 +128,7 @@ jobs:
               with:
                   script: |
                       const branchName = process.env.BRANCH_NAME;
-                      const prNumber = ${{ steps.create-pr.outputs.result }};
+                      const prNumber = '${{ steps.create-pr.outputs.result }}' === 'null' ? null : parseInt('${{ steps.create-pr.outputs.result }}');
 
                       if (!prNumber) {
                         console.log('PR number not available, skipping comment');

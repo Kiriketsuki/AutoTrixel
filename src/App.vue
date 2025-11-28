@@ -72,8 +72,8 @@
             <div class="tutorial-box">
                 <h3>Shortcuts</h3>
                 <div class="key-row"><span>Undo</span> <span class="kbd">Ctrl + Z</span></div>
-                <div class="key-row"><span>Zoom In/Out</span> <span class="kbd">Ctrl + [ / ]</span></div>
-                <div class="key-row"><span>Brush Size</span> <span class="kbd">Ctrl + - / +</span></div>
+                <div class="key-row"><span>Zoom In/Out</span> <span class="kbd">Ctrl + + / -</span></div>
+                <div class="key-row"><span>Brush Size</span> <span class="kbd">Ctrl + [ / ]</span></div>
                 <div class="key-row"><span>Scroll/Zoom</span> <span class="kbd">Ctrl + Wheel</span></div>
             </div>
 
