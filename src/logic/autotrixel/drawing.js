@@ -1,6 +1,6 @@
-import { getTrianglePath } from "./geometry.js";
+import { getTrianglePath, getTriangleVertices } from "./geometry.js";
 
-export function fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half) {
+export function fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage) {
     artCtx.clearRect(0, 0, artCanvas.width, artCanvas.height);
 
     if (config.bgColor !== "transparent") {
@@ -8,16 +8,75 @@ export function fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_hal
         artCtx.fillRect(0, 0, artCanvas.width, artCanvas.height);
     }
 
+    if (bgImage && bgImage.img) {
+        artCtx.save();
+        artCtx.globalAlpha = bgImage.opacity;
+        artCtx.drawImage(bgImage.img, bgImage.x, bgImage.y, bgImage.img.width * bgImage.scale, bgImage.img.height * bgImage.scale);
+        artCtx.restore();
+    }
+
+    const drawTriangle = (r, c, colorOrData, triHeight, W_half) => {
+        if (typeof colorOrData === "string") {
+            const path = getTrianglePath(r, c, triHeight, W_half);
+            artCtx.fillStyle = colorOrData;
+            artCtx.fill(path);
+            artCtx.strokeStyle = colorOrData;
+            artCtx.lineWidth = 0.5;
+            artCtx.stroke(path);
+        } else if (colorOrData && colorOrData.subdivided) {
+            // Calculate sub-triangle dimensions and positions
+            // This is tricky because getTrianglePath relies on integer grid coordinates.
+            // We can't easily use getTrianglePath for sub-triangles unless we scale everything.
+            // Instead, let's manually calculate vertices for the sub-triangles.
+
+            const vertices = getTriangleVertices(r, c, triHeight, W_half);
+            const [v0, v1, v2] = vertices;
+
+            // Midpoints
+            const m01 = { x: (v0.x + v1.x) / 2, y: (v0.y + v1.y) / 2 };
+            const m12 = { x: (v1.x + v2.x) / 2, y: (v1.y + v2.y) / 2 };
+            const m20 = { x: (v2.x + v0.x) / 2, y: (v2.y + v0.y) / 2 };
+
+            const drawSub = (p1, p2, p3, color) => {
+                if (!color) return;
+                if (typeof color === "object" && color.subdivided) {
+                    // Recursive drawing would require passing down the new vertices and handling depth
+                    // For now, let's assume 1 level of subdivision or handle recursion by passing vertices
+                    drawRecursive(p1, p2, p3, color);
+                    return;
+                }
+
+                artCtx.beginPath();
+                artCtx.moveTo(p1.x, p1.y);
+                artCtx.lineTo(p2.x, p2.y);
+                artCtx.lineTo(p3.x, p3.y);
+                artCtx.closePath();
+                artCtx.fillStyle = color;
+                artCtx.fill();
+                artCtx.strokeStyle = color;
+                artCtx.lineWidth = 0.5;
+                artCtx.stroke();
+            };
+
+            const drawRecursive = (p1, p2, p3, data) => {
+                const m01 = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+                const m12 = { x: (p2.x + p3.x) / 2, y: (p2.y + p3.y) / 2 };
+                const m20 = { x: (p3.x + p1.x) / 2, y: (p3.y + p1.y) / 2 };
+
+                drawSub(p1, m01, m20, data.children[0]);
+                drawSub(m01, p2, m12, data.children[1]);
+                drawSub(m20, m12, p3, data.children[2]);
+                drawSub(m01, m12, m20, data.children[3]);
+            };
+
+            drawRecursive(v0, v1, v2, colorOrData);
+        }
+    };
+
     const keys = Object.keys(gridData);
     keys.forEach((key) => {
         const [r, c] = key.split(",").map(Number);
-        const color = gridData[key];
-        const path = getTrianglePath(r, c, triHeight, W_half);
-        artCtx.fillStyle = color;
-        artCtx.fill(path);
-        artCtx.strokeStyle = color;
-        artCtx.lineWidth = 0.5;
-        artCtx.stroke(path);
+        drawTriangle(r, c, gridData[key], triHeight, W_half);
     });
 
     if (config.showGrid) {
@@ -42,8 +101,17 @@ export function drawCursor(cursorCtx, cursorCanvas, hoveredCells, currentTool, t
     cursorCtx.shadowBlur = 4;
 
     hoveredCells.forEach((cell) => {
-        const path = getTrianglePath(cell.r, cell.c, triHeight, W_half);
-        cursorCtx.stroke(path);
+        if (cell.subVertices) {
+            cursorCtx.beginPath();
+            cursorCtx.moveTo(cell.subVertices[0].x, cell.subVertices[0].y);
+            cursorCtx.lineTo(cell.subVertices[1].x, cell.subVertices[1].y);
+            cursorCtx.lineTo(cell.subVertices[2].x, cell.subVertices[2].y);
+            cursorCtx.closePath();
+            cursorCtx.stroke();
+        } else {
+            const path = getTrianglePath(cell.r, cell.c, triHeight, W_half);
+            cursorCtx.stroke(path);
+        }
     });
 
     cursorCtx.shadowColor = "transparent";

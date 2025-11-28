@@ -1,6 +1,6 @@
 import { REQUIRED_SELECTORS, DEFAULT_CONFIG } from "./autotrixel/constants.js";
 import { clamp, hexToOklchVals } from "./autotrixel/utils.js";
-import { pixelToGrid, getTriangleCluster, findBestCenter } from "./autotrixel/geometry.js";
+import { pixelToGrid, getTriangleCluster, findBestCenterPixel, getTriangleVertices, getBarycentric } from "./autotrixel/geometry.js";
 import { fullRedraw, drawCursor } from "./autotrixel/drawing.js";
 import { batchPaintCells, fillBucket, interpolateStroke } from "./autotrixel/actions.js";
 import { exportImage, exportSVG } from "./autotrixel/export.js";
@@ -72,12 +72,18 @@ export function createAutoTrixel(rootElement) {
     let lastMouseY = 0;
 
     let isPanning = false;
+    let isBgPanning = false;
     let panStartX = 0;
     let panStartY = 0;
     let panOffsetX = 0;
     let panOffsetY = 0;
     let startPanOffsetX = 0;
     let startPanOffsetY = 0;
+    let bgPanStartX = 0;
+    let bgPanStartY = 0;
+    let startBgX = 0;
+    let startBgY = 0;
+    let controlMode = "canvas"; // 'canvas' or 'background'
 
     let historyQueue = [];
     const MAX_HISTORY = 10;
@@ -89,6 +95,14 @@ export function createAutoTrixel(rootElement) {
     let triHeight;
     let W_half;
     let toastTimeout = null;
+
+    let bgImage = {
+        img: null,
+        x: 0,
+        y: 0,
+        scale: 1,
+        opacity: 0.5,
+    };
 
     function updateDimensions() {
         triHeight = (config.triSide * Math.sqrt(3)) / 2;
@@ -105,7 +119,7 @@ export function createAutoTrixel(rootElement) {
         canvasStack.style.width = `${w}px`;
         canvasStack.style.height = `${h}px`;
 
-        fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half);
+        fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
     }
 
     function updateCanvasTransform() {
@@ -140,7 +154,7 @@ export function createAutoTrixel(rootElement) {
         }
         const previousState = historyQueue.pop();
         gridData = JSON.parse(previousState);
-        fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half);
+        fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
         updateUndoButton();
         showToast("Undo");
     }
@@ -163,7 +177,7 @@ export function createAutoTrixel(rootElement) {
             colorCodeDisplay.innerText = `L:${Math.round(colorState.l * 100)} C:${colorState.c.toFixed(2)} H:${Math.round(colorState.h)}`;
         }
 
-        if (currentTool === "eraser" || currentTool === "picker") {
+        if (currentTool === "eraser" || currentTool === "picker" || currentTool === "subdivide") {
             setTool("pencil");
         }
     }
@@ -233,6 +247,71 @@ export function createAutoTrixel(rootElement) {
         }
     }
 
+    function processSubdivision(gridData, key, p, r, c, tool, color, triHeight, W_half) {
+        let data = gridData[key];
+
+        // Prevent further subdivision if already subdivided
+        if (tool === "subdivide" && data && data.subdivided) {
+            return data;
+        }
+
+        const vertices = getTriangleVertices(r, c, triHeight, W_half);
+
+        const updateRecursive = (node, p, v0, v1, v2) => {
+            if (typeof node === "string" || !node) {
+                if (tool === "subdivide") {
+                    const baseColor = node || null;
+                    return {
+                        subdivided: true,
+                        children: [baseColor, baseColor, baseColor, baseColor],
+                    };
+                } else {
+                    return tool === "eraser" ? null : color;
+                }
+            }
+
+            if (node.subdivided) {
+                const m01 = { x: (v0.x + v1.x) / 2, y: (v0.y + v1.y) / 2 };
+                const m12 = { x: (v1.x + v2.x) / 2, y: (v1.y + v2.y) / 2 };
+                const m20 = { x: (v2.x + v0.x) / 2, y: (v2.y + v0.y) / 2 };
+
+                const { u, v, w } = getBarycentric(p, v0, v1, v2);
+
+                let childIndex = 3;
+                let nextV0, nextV1, nextV2;
+
+                if (u > 0.5) {
+                    childIndex = 0;
+                    nextV0 = v0;
+                    nextV1 = m01;
+                    nextV2 = m20;
+                } else if (v > 0.5) {
+                    childIndex = 1;
+                    nextV0 = m01;
+                    nextV1 = v1;
+                    nextV2 = m12;
+                } else if (w > 0.5) {
+                    childIndex = 2;
+                    nextV0 = m20;
+                    nextV1 = m12;
+                    nextV2 = v2;
+                } else {
+                    childIndex = 3;
+                    nextV0 = m01;
+                    nextV1 = m12;
+                    nextV2 = m20;
+                }
+
+                const newChildren = [...node.children];
+                newChildren[childIndex] = updateRecursive(newChildren[childIndex], p, nextV0, nextV1, nextV2);
+                return { ...node, children: newChildren };
+            }
+            return node;
+        };
+
+        return updateRecursive(data, p, vertices[0], vertices[1], vertices[2]);
+    }
+
     function handleSingleClick() {
         if (hoveredCells.length === 0) return false;
 
@@ -246,27 +325,106 @@ export function createAutoTrixel(rootElement) {
             const key = `${cell.r},${cell.c}`;
             const color = gridData[key];
             if (color) {
-                if (color.startsWith("#")) {
-                    syncColorFromHex(color);
-                } else if (color.startsWith("oklch")) {
-                    const matches = color.match(/oklch\(([^%]+)%\s+([\d.]+)\s+([\d.]+)\)/);
-                    if (matches) {
-                        colorState = {
-                            l: parseFloat(matches[1]) / 100,
-                            c: parseFloat(matches[2]),
-                            h: parseFloat(matches[3]),
-                        };
-                        updateColorUI(color);
-                    }
+                // Handle picking from subdivided?
+                // For now, picker just picks the base color or fails if subdivided.
+                // To support picking from subdivided, we'd need to drill down.
+                // Let's keep it simple for now or use the first child if subdivided.
+                let picked = color;
+                if (typeof color === "object" && color.subdivided) {
+                    // Just pick the first non-null child or something?
+                    // Or maybe we don't support picking from subdivided yet.
+                    // Let's try to pick recursively?
+                    // Without mouse coords, we can't know which sub-pixel.
+                    // But handleSingleClick is called from mousedown which has coords.
+                    // But handleSingleClick doesn't take coords.
+                    // We can use lastMouseX, lastMouseY.
+
+                    const vertices = getTriangleVertices(cell.r, cell.c, triHeight, W_half);
+                    const p = { x: lastMouseX, y: lastMouseY };
+
+                    const pickRecursive = (node, p, v0, v1, v2) => {
+                        if (typeof node === "string") return node;
+                        if (!node) return null;
+                        if (node.subdivided) {
+                            const m01 = { x: (v0.x + v1.x) / 2, y: (v0.y + v1.y) / 2 };
+                            const m12 = { x: (v1.x + v2.x) / 2, y: (v1.y + v2.y) / 2 };
+                            const m20 = { x: (v2.x + v0.x) / 2, y: (v2.y + v0.y) / 2 };
+                            const { u, v, w } = getBarycentric(p, v0, v1, v2);
+                            let childIndex = 3;
+                            let nextV0, nextV1, nextV2;
+                            if (u > 0.5) {
+                                childIndex = 0;
+                                nextV0 = v0;
+                                nextV1 = m01;
+                                nextV2 = m20;
+                            } else if (v > 0.5) {
+                                childIndex = 1;
+                                nextV0 = m01;
+                                nextV1 = v1;
+                                nextV2 = m12;
+                            } else if (w > 0.5) {
+                                childIndex = 2;
+                                nextV0 = m20;
+                                nextV1 = m12;
+                                nextV2 = v2;
+                            } else {
+                                childIndex = 3;
+                                nextV0 = m01;
+                                nextV1 = m12;
+                                nextV2 = m20;
+                            }
+                            return pickRecursive(node.children[childIndex], p, nextV0, nextV1, nextV2);
+                        }
+                        return null;
+                    };
+                    picked = pickRecursive(color, p, vertices[0], vertices[1], vertices[2]);
                 }
-                showToast("Color Picked");
+
+                if (picked) {
+                    if (picked.startsWith("#")) {
+                        syncColorFromHex(picked);
+                    } else if (picked.startsWith("oklch")) {
+                        const matches = picked.match(/oklch\(([^%]+)%\s+([\d.]+)\s+([\d.]+)\)/);
+                        if (matches) {
+                            colorState = {
+                                l: parseFloat(matches[1]) / 100,
+                                c: parseFloat(matches[2]),
+                                h: parseFloat(matches[3]),
+                            };
+                            updateColorUI(picked);
+                        }
+                    }
+                    showToast("Color Picked");
+                }
             }
         } else {
-            didChange = batchPaintCells(hoveredCells, currentTool, gridData, currentCssColor);
+            if (config.brushSize === 1 && (currentTool === "subdivide" || currentTool === "pencil" || currentTool === "eraser")) {
+                const cell = hoveredCells[0];
+                const key = `${cell.r},${cell.c}`;
+                const p = { x: lastMouseX, y: lastMouseY };
+                const newData = processSubdivision(gridData, key, p, cell.r, cell.c, currentTool, currentCssColor, triHeight, W_half);
+                if (JSON.stringify(gridData[key]) !== JSON.stringify(newData)) {
+                    gridData[key] = newData;
+                    didChange = true;
+                }
+            } else {
+                if (currentTool === "subdivide") {
+                    hoveredCells.forEach((cell) => {
+                        const key = `${cell.r},${cell.c}`;
+                        if (!gridData[key] || typeof gridData[key] === "string") {
+                            const base = gridData[key] || null;
+                            gridData[key] = { subdivided: true, children: [base, base, base, base] };
+                            didChange = true;
+                        }
+                    });
+                } else {
+                    didChange = batchPaintCells(hoveredCells, currentTool, gridData, currentCssColor);
+                }
+            }
         }
 
         if (didChange) {
-            fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half);
+            fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
         }
         return didChange;
     }
@@ -275,12 +433,22 @@ export function createAutoTrixel(rootElement) {
         cursorCanvas.addEventListener("mousedown", (e) => {
             if (e.button === 1) {
                 e.preventDefault();
-                isPanning = true;
-                panStartX = e.clientX;
-                panStartY = e.clientY;
-                startPanOffsetX = panOffsetX;
-                startPanOffsetY = panOffsetY;
-                cursorCanvas.style.cursor = "grabbing";
+                // Check for BG Pan Shortcut: Ctrl + Shift + Middle Click
+                if ((e.ctrlKey && e.shiftKey) || controlMode === "background") {
+                    isBgPanning = true;
+                    bgPanStartX = e.clientX;
+                    bgPanStartY = e.clientY;
+                    startBgX = bgImage.x;
+                    startBgY = bgImage.y;
+                    cursorCanvas.style.cursor = "move";
+                } else {
+                    isPanning = true;
+                    panStartX = e.clientX;
+                    panStartY = e.clientY;
+                    startPanOffsetX = panOffsetX;
+                    startPanOffsetY = panOffsetY;
+                    cursorCanvas.style.cursor = "grabbing";
+                }
                 return;
             }
 
@@ -297,6 +465,11 @@ export function createAutoTrixel(rootElement) {
         addWindowListener("mouseup", (e) => {
             if (isPanning) {
                 isPanning = false;
+                cursorCanvas.style.cursor = "crosshair";
+                return;
+            }
+            if (isBgPanning) {
+                isBgPanning = false;
                 cursorCanvas.style.cursor = "crosshair";
                 return;
             }
@@ -320,6 +493,16 @@ export function createAutoTrixel(rootElement) {
                 return;
             }
 
+            if (isBgPanning) {
+                const dx = e.clientX - bgPanStartX;
+                const dy = e.clientY - bgPanStartY;
+                bgImage.x = startBgX + dx;
+                bgImage.y = startBgY + dy;
+                fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
+                notifyBgChange();
+                return;
+            }
+
             const rect = cursorCanvas.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
@@ -330,19 +513,85 @@ export function createAutoTrixel(rootElement) {
                 const useSize = currentTool === "picker" || currentTool === "bucket" ? 1 : config.brushSize;
                 let anchor = { r: cell.r, c: cell.c };
                 if (useSize > 1) {
-                    anchor = findBestCenter(cell.r, cell.c, useSize, config);
+                    // Use pixel-based centering for better accuracy
+                    anchor = findBestCenterPixel(x, y, useSize, config, triHeight, W_half) || anchor;
                 }
                 hoveredCells = getTriangleCluster(anchor.r, anchor.c, useSize, config);
+
+                if (useSize === 1 && hoveredCells.length === 1) {
+                    const key = `${cell.r},${cell.c}`;
+                    const data = gridData[key];
+                    if (data && data.subdivided) {
+                        const vertices = getTriangleVertices(cell.r, cell.c, triHeight, W_half);
+                        const [v0, v1, v2] = vertices;
+                        const m01 = { x: (v0.x + v1.x) / 2, y: (v0.y + v1.y) / 2 };
+                        const m12 = { x: (v1.x + v2.x) / 2, y: (v1.y + v2.y) / 2 };
+                        const m20 = { x: (v2.x + v0.x) / 2, y: (v2.y + v0.y) / 2 };
+
+                        const p = { x: x, y: y };
+                        const { u, v, w } = getBarycentric(p, v0, v1, v2);
+
+                        let subVertices;
+                        if (u > 0.5) {
+                            subVertices = [v0, m01, m20];
+                        } else if (v > 0.5) {
+                            subVertices = [m01, v1, m12];
+                        } else if (w > 0.5) {
+                            subVertices = [m20, m12, v2];
+                        } else {
+                            subVertices = [m01, m12, m20];
+                        }
+                        hoveredCells[0].subVertices = subVertices;
+                    }
+                }
             } else {
                 hoveredCells = [];
             }
             drawCursor(cursorCtx, cursorCanvas, hoveredCells, currentTool, triHeight, W_half);
 
             if (isDrawing && currentTool !== "bucket" && currentTool !== "picker") {
-                const cellsToPaint = interpolateStroke(lastMouseX, lastMouseY, x, y, currentTool, config, triHeight, W_half);
-                if (cellsToPaint.length > 0) {
-                    const didChange = batchPaintCells(cellsToPaint, currentTool, gridData, currentCssColor);
-                    if (didChange) fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half);
+                if (config.brushSize === 1 && (currentTool === "subdivide" || currentTool === "pencil" || currentTool === "eraser")) {
+                    const dx = x - lastMouseX;
+                    const dy = y - lastMouseY;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    const steps = Math.ceil(dist / 2);
+
+                    let didChange = false;
+                    for (let i = 0; i <= steps; i++) {
+                        const t = steps === 0 ? 0 : i / steps;
+                        const px = lastMouseX + dx * t;
+                        const py = lastMouseY + dy * t;
+                        const c = pixelToGrid(px, py, triHeight, W_half, config);
+                        if (c) {
+                            const key = `${c.r},${c.c}`;
+                            const newData = processSubdivision(gridData, key, { x: px, y: py }, c.r, c.c, currentTool, currentCssColor, triHeight, W_half);
+                            if (JSON.stringify(gridData[key]) !== JSON.stringify(newData)) {
+                                gridData[key] = newData;
+                                didChange = true;
+                            }
+                        }
+                    }
+                    if (didChange) fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
+                } else {
+                    const cellsToPaint = interpolateStroke(lastMouseX, lastMouseY, x, y, currentTool, config, triHeight, W_half);
+                    if (cellsToPaint.length > 0) {
+                        if (currentTool === "subdivide") {
+                            let didChange = false;
+                            cellsToPaint.forEach((c) => {
+                                const key = `${c.r},${c.c}`;
+                                // Only subdivide if not already subdivided
+                                if (!gridData[key] || typeof gridData[key] === "string") {
+                                    const base = gridData[key] || null;
+                                    gridData[key] = { subdivided: true, children: [base, base, base, base] };
+                                    didChange = true;
+                                }
+                            });
+                            if (didChange) fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
+                        } else {
+                            const didChange = batchPaintCells(cellsToPaint, currentTool, gridData, currentCssColor);
+                            if (didChange) fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
+                        }
+                    }
                 }
             }
 
@@ -434,18 +683,84 @@ export function createAutoTrixel(rootElement) {
                         const useSize = currentTool === "picker" || currentTool === "bucket" ? 1 : config.brushSize;
                         let anchor = { r: cell.r, c: cell.c };
                         if (useSize > 1) {
-                            anchor = findBestCenter(cell.r, cell.c, useSize, config);
+                            // Use pixel-based centering for better accuracy
+                            anchor = findBestCenterPixel(x, y, useSize, config, triHeight, W_half) || anchor;
                         }
                         hoveredCells = getTriangleCluster(anchor.r, anchor.c, useSize, config);
+
+                        if (useSize === 1 && hoveredCells.length === 1) {
+                            const key = `${cell.r},${cell.c}`;
+                            const data = gridData[key];
+                            if (data && data.subdivided) {
+                                const vertices = getTriangleVertices(cell.r, cell.c, triHeight, W_half);
+                                const [v0, v1, v2] = vertices;
+                                const m01 = { x: (v0.x + v1.x) / 2, y: (v0.y + v1.y) / 2 };
+                                const m12 = { x: (v1.x + v2.x) / 2, y: (v1.y + v2.y) / 2 };
+                                const m20 = { x: (v2.x + v0.x) / 2, y: (v2.y + v0.y) / 2 };
+
+                                const p = { x: x, y: y };
+                                const { u, v, w } = getBarycentric(p, v0, v1, v2);
+
+                                let subVertices;
+                                if (u > 0.5) {
+                                    subVertices = [v0, m01, m20];
+                                } else if (v > 0.5) {
+                                    subVertices = [m01, v1, m12];
+                                } else if (w > 0.5) {
+                                    subVertices = [m20, m12, v2];
+                                } else {
+                                    subVertices = [m01, m12, m20];
+                                }
+                                hoveredCells[0].subVertices = subVertices;
+                            }
+                        }
                     } else {
                         hoveredCells = [];
                     }
 
                     if (isDrawing && currentTool !== "bucket" && currentTool !== "picker") {
-                        const cellsToPaint = interpolateStroke(lastMouseX, lastMouseY, x, y, currentTool, config, triHeight, W_half);
-                        if (cellsToPaint.length > 0) {
-                            const didChange = batchPaintCells(cellsToPaint, currentTool, gridData, currentCssColor);
-                            if (didChange) fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half);
+                        if (config.brushSize === 1 && (currentTool === "subdivide" || currentTool === "pencil" || currentTool === "eraser")) {
+                            const dx = x - lastMouseX;
+                            const dy = y - lastMouseY;
+                            const dist = Math.sqrt(dx * dx + dy * dy);
+                            const steps = Math.ceil(dist / 2);
+
+                            let didChange = false;
+                            for (let i = 0; i <= steps; i++) {
+                                const t = steps === 0 ? 0 : i / steps;
+                                const px = lastMouseX + dx * t;
+                                const py = lastMouseY + dy * t;
+                                const c = pixelToGrid(px, py, triHeight, W_half, config);
+                                if (c) {
+                                    const key = `${c.r},${c.c}`;
+                                    const newData = processSubdivision(gridData, key, { x: px, y: py }, c.r, c.c, currentTool, currentCssColor, triHeight, W_half);
+                                    if (JSON.stringify(gridData[key]) !== JSON.stringify(newData)) {
+                                        gridData[key] = newData;
+                                        didChange = true;
+                                    }
+                                }
+                            }
+                            if (didChange) fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
+                        } else {
+                            const cellsToPaint = interpolateStroke(lastMouseX, lastMouseY, x, y, currentTool, config, triHeight, W_half);
+                            if (cellsToPaint.length > 0) {
+                                if (currentTool === "subdivide") {
+                                    let didChange = false;
+                                    cellsToPaint.forEach((c) => {
+                                        const key = `${c.r},${c.c}`;
+                                        // Only subdivide if not already subdivided
+                                        if (!gridData[key] || typeof gridData[key] === "string") {
+                                            const base = gridData[key] || null;
+                                            gridData[key] = { subdivided: true, children: [base, base, base, base] };
+                                            didChange = true;
+                                        }
+                                    });
+                                    if (didChange) fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
+                                } else {
+                                    const didChange = batchPaintCells(cellsToPaint, currentTool, gridData, currentCssColor);
+                                    if (didChange) fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
+                                }
+                            }
                         }
                     }
                     lastMouseX = x;
@@ -487,22 +802,48 @@ export function createAutoTrixel(rootElement) {
                     updateBrushSize(1);
                 }
             } else {
-                if (e.key === "ArrowUp") {
-                    e.preventDefault();
-                    panOffsetY -= 20;
-                    updateCanvasTransform();
-                } else if (e.key === "ArrowDown") {
-                    e.preventDefault();
-                    panOffsetY += 20;
-                    updateCanvasTransform();
-                } else if (e.key === "ArrowLeft") {
-                    e.preventDefault();
-                    panOffsetX -= 20;
-                    updateCanvasTransform();
-                } else if (e.key === "ArrowRight") {
-                    e.preventDefault();
-                    panOffsetX += 20;
-                    updateCanvasTransform();
+                if (controlMode === "background") {
+                    // Background Pan with Arrow Keys
+                    if (e.key === "ArrowUp") {
+                        e.preventDefault();
+                        bgImage.y -= 10;
+                        fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
+                        notifyBgChange();
+                    } else if (e.key === "ArrowDown") {
+                        e.preventDefault();
+                        bgImage.y += 10;
+                        fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
+                        notifyBgChange();
+                    } else if (e.key === "ArrowLeft") {
+                        e.preventDefault();
+                        bgImage.x -= 10;
+                        fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
+                        notifyBgChange();
+                    } else if (e.key === "ArrowRight") {
+                        e.preventDefault();
+                        bgImage.x += 10;
+                        fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
+                        notifyBgChange();
+                    }
+                } else {
+                    // Canvas Pan with Arrow Keys
+                    if (e.key === "ArrowUp") {
+                        e.preventDefault();
+                        panOffsetY -= 20;
+                        updateCanvasTransform();
+                    } else if (e.key === "ArrowDown") {
+                        e.preventDefault();
+                        panOffsetY += 20;
+                        updateCanvasTransform();
+                    } else if (e.key === "ArrowLeft") {
+                        e.preventDefault();
+                        panOffsetX -= 20;
+                        updateCanvasTransform();
+                    } else if (e.key === "ArrowRight") {
+                        e.preventDefault();
+                        panOffsetX += 20;
+                        updateCanvasTransform();
+                    }
                 }
             }
         });
@@ -512,8 +853,17 @@ export function createAutoTrixel(rootElement) {
             (e) => {
                 if (e.ctrlKey) {
                     e.preventDefault();
-                    const delta = e.deltaY < 0 ? 1 : -1;
-                    zoom(delta * 5);
+                    // Check for BG Scale Shortcut: Ctrl + Shift + Scroll
+                    if (e.shiftKey || controlMode === "background") {
+                        const delta = e.deltaY < 0 ? 0.1 : -0.1;
+                        bgImage.scale = clamp(bgImage.scale + delta, 0.1, 5);
+                        fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
+                        notifyBgChange();
+                        showToast(`BG Scale: ${bgImage.scale.toFixed(2)}`);
+                    } else {
+                        const delta = e.deltaY < 0 ? 1 : -1;
+                        zoom(delta * 5);
+                    }
                 }
             },
             { passive: false },
@@ -555,12 +905,12 @@ export function createAutoTrixel(rootElement) {
 
         gridToggle.addEventListener("change", (e) => {
             config.showGrid = e.target.checked;
-            fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half);
+            fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
         });
 
         gridColorPicker.addEventListener("input", (e) => {
             config.gridColor = e.target.value;
-            fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half);
+            fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
         });
 
         lInput.addEventListener("input", updateColorFromSliders);
@@ -586,15 +936,66 @@ export function createAutoTrixel(rootElement) {
     function resetCanvas() {
         pushToHistory(saveStateForUndo());
         gridData = {};
-        fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half);
-        showToast("Canvas Cleared");
+        bgImage = {
+            img: null,
+            x: 0,
+            y: 0,
+            scale: 1,
+            opacity: 0.5,
+        };
+        fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
+        notifyBgChange();
+        showToast("Canvas & Background Cleared");
+    }
+
+    function setBackgroundImage(file) {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                bgImage.img = img;
+                bgImage.x = 0;
+                bgImage.y = 0;
+                bgImage.scale = 1;
+                fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
+                notifyBgChange();
+                showToast("Background Image Loaded");
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function updateBackground(props) {
+        if (props.x !== undefined) bgImage.x = props.x;
+        if (props.y !== undefined) bgImage.y = props.y;
+        if (props.scale !== undefined) bgImage.scale = props.scale;
+        if (props.opacity !== undefined) bgImage.opacity = props.opacity;
+        fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
+    }
+
+    function setControlMode(mode) {
+        controlMode = mode;
+        showToast(`Control Mode: ${mode === "background" ? "Background" : "Canvas"}`);
+    }
+
+    let onBgChangeCallback = null;
+    function onBgChange(cb) {
+        onBgChangeCallback = cb;
+    }
+
+    function notifyBgChange() {
+        if (onBgChangeCallback) {
+            onBgChangeCallback({ ...bgImage, hasImage: !!bgImage.img });
+        }
     }
 
     function init() {
         updateDimensions();
         setupPalette();
         setupEvents();
-        fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half);
+        fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
         updateColorFromSliders();
         updateUndoButton();
     }
@@ -605,6 +1006,10 @@ export function createAutoTrixel(rootElement) {
         setTool,
         undoAction,
         resetCanvas,
+        setBackgroundImage,
+        updateBackground,
+        setControlMode,
+        onBgChange,
         exportImage: () => exportImage(artCanvas, gridData, config, triHeight, W_half, exportGridToggle, showToast),
         exportSVG: () => exportSVG(artCanvas, gridData, config, triHeight, W_half, exportGridToggle, showToast),
         destroy: () => {

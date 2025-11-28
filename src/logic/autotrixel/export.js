@@ -1,4 +1,4 @@
-import { getTrianglePath } from "./geometry.js";
+import { getTrianglePath, getTriangleVertices } from "./geometry.js";
 import { drawGridLines } from "./drawing.js";
 
 export function exportImage(artCanvas, gridData, config, triHeight, W_half, exportGridToggle, showToast) {
@@ -14,16 +14,52 @@ export function exportImage(artCanvas, gridData, config, triHeight, W_half, expo
         tCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
     }
 
+    const drawSub = (p1, p2, p3, color) => {
+        if (!color) return;
+        if (typeof color === "object" && color.subdivided) {
+            drawRecursive(p1, p2, p3, color);
+            return;
+        }
+
+        tCtx.beginPath();
+        tCtx.moveTo(p1.x, p1.y);
+        tCtx.lineTo(p2.x, p2.y);
+        tCtx.lineTo(p3.x, p3.y);
+        tCtx.closePath();
+        tCtx.fillStyle = color;
+        tCtx.fill();
+        tCtx.strokeStyle = color;
+        tCtx.lineWidth = 0.5;
+        tCtx.stroke();
+    };
+
+    const drawRecursive = (p1, p2, p3, data) => {
+        const m01 = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+        const m12 = { x: (p2.x + p3.x) / 2, y: (p2.y + p3.y) / 2 };
+        const m20 = { x: (p3.x + p1.x) / 2, y: (p3.y + p1.y) / 2 };
+
+        drawSub(p1, m01, m20, data.children[0]);
+        drawSub(m01, p2, m12, data.children[1]);
+        drawSub(m20, m12, p3, data.children[2]);
+        drawSub(m01, m12, m20, data.children[3]);
+    };
+
     const keys = Object.keys(gridData);
     keys.forEach((key) => {
         const [r, c] = key.split(",").map(Number);
-        const color = gridData[key];
-        const path = getTrianglePath(r, c, triHeight, W_half);
-        tCtx.fillStyle = color;
-        tCtx.fill(path);
-        tCtx.strokeStyle = color;
-        tCtx.lineWidth = 0.5;
-        tCtx.stroke(path);
+        const colorOrData = gridData[key];
+
+        if (typeof colorOrData === "string") {
+            const path = getTrianglePath(r, c, triHeight, W_half);
+            tCtx.fillStyle = colorOrData;
+            tCtx.fill(path);
+            tCtx.strokeStyle = colorOrData;
+            tCtx.lineWidth = 0.5;
+            tCtx.stroke(path);
+        } else if (colorOrData && colorOrData.subdivided) {
+            const vertices = getTriangleVertices(r, c, triHeight, W_half);
+            drawRecursive(vertices[0], vertices[1], vertices[2], colorOrData);
+        }
     });
 
     if (exportGridToggle.checked) {
@@ -51,23 +87,49 @@ export function exportSVG(artCanvas, gridData, config, triHeight, W_half, export
         svg += `<rect width="100%" height="100%" fill="${config.bgColor}"/>`;
     }
 
+    const generateSubSvg = (p1, p2, p3, color) => {
+        if (!color) return "";
+        if (typeof color === "object" && color.subdivided) {
+            return generateRecursiveSvg(p1, p2, p3, color);
+        }
+        const points = `${p1.x},${p1.y} ${p2.x},${p2.y} ${p3.x},${p3.y}`;
+        return `<polygon points="${points}" fill="${color}" stroke="${color}" stroke-width="0.5"/>`;
+    };
+
+    const generateRecursiveSvg = (p1, p2, p3, data) => {
+        const m01 = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+        const m12 = { x: (p2.x + p3.x) / 2, y: (p2.y + p3.y) / 2 };
+        const m20 = { x: (p3.x + p1.x) / 2, y: (p3.y + p1.y) / 2 };
+
+        let s = "";
+        s += generateSubSvg(p1, m01, m20, data.children[0]);
+        s += generateSubSvg(m01, p2, m12, data.children[1]);
+        s += generateSubSvg(m20, m12, p3, data.children[2]);
+        s += generateSubSvg(m01, m12, m20, data.children[3]);
+        return s;
+    };
+
     const keys = Object.keys(gridData);
     keys.forEach((key) => {
         const [r, c] = key.split(",").map(Number);
-        const color = gridData[key];
+        const colorOrData = gridData[key];
 
-        const xBase = c * W_half;
-        const yBase = r * triHeight;
-        const isUp = r % 2 === Math.abs(c) % 2;
+        if (typeof colorOrData === "string") {
+            const xBase = c * W_half;
+            const yBase = r * triHeight;
+            const isUp = r % 2 === Math.abs(c) % 2;
 
-        let points = "";
-        if (isUp) {
-            points = `${xBase},${yBase + triHeight} ${xBase + 2 * W_half},${yBase + triHeight} ${xBase + W_half},${yBase}`;
-        } else {
-            points = `${xBase},${yBase} ${xBase + 2 * W_half},${yBase} ${xBase + W_half},${yBase + triHeight}`;
+            let points = "";
+            if (isUp) {
+                points = `${xBase},${yBase + triHeight} ${xBase + 2 * W_half},${yBase + triHeight} ${xBase + W_half},${yBase}`;
+            } else {
+                points = `${xBase},${yBase} ${xBase + 2 * W_half},${yBase} ${xBase + W_half},${yBase + triHeight}`;
+            }
+            svg += `<polygon points="${points}" fill="${colorOrData}" stroke="${colorOrData}" stroke-width="0.5"/>`;
+        } else if (colorOrData && colorOrData.subdivided) {
+            const vertices = getTriangleVertices(r, c, triHeight, W_half);
+            svg += generateRecursiveSvg(vertices[0], vertices[1], vertices[2], colorOrData);
         }
-
-        svg += `<polygon points="${points}" fill="${color}" stroke="${color}" stroke-width="0.5"/>`;
     });
 
     if (exportGridToggle.checked && config.widthTriangles * config.heightTriangles <= 400000) {
