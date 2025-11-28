@@ -85,6 +85,8 @@ body {
     background-color: var(--bg-color);
     color: var(--text-color);
     font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    overflow: hidden; /* Prevent body scroll */
+    overscroll-behavior: none; /* Prevent bounce/chaining */
 }
 
 #app {
@@ -483,7 +485,7 @@ canvas {
 }
 
 .style-btn:hover {
-    border-color: var(--accent);
+    border-color: var(--color-tertiary);
     color: var(--color-white);
 }
 

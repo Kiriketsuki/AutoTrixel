@@ -1,5 +1,6 @@
 <script setup>
     import { ref } from "vue";
+    import TransitionExpand from "./TransitionExpand.vue";
 
     const props = defineProps({
         title: {
@@ -31,11 +32,11 @@
                 ▼
             </span>
         </div>
-        <div
-            class="section-content"
-            v-show="!isCollapsed">
-            <slot></slot>
-        </div>
+        <TransitionExpand :expanded="!isCollapsed">
+            <div class="section-content">
+                <slot></slot>
+            </div>
+        </TransitionExpand>
     </div>
 </template>
 

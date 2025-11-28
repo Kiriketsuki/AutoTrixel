@@ -1,6 +1,7 @@
 <script setup>
     import { ref } from "vue";
     import ControlSection from "./ControlSection.vue";
+    import TransitionExpand from "./TransitionExpand.vue";
 
     const props = defineProps({
         autoTrixelInstance: Object,
@@ -153,110 +154,110 @@
                 <span style="font-size: 0.8rem; color: var(--color-white-dark)">{{ showMainGridStyle ? "▲" : "▼" }}</span>
             </div>
 
-            <div
-                v-show="showMainGridStyle"
-                style="padding: 10px; background-color: var(--color-black-light--1); border-radius: 0 0 4px 4px">
-                <div class="control-group">
-                    <div style="display: flex; justify-content: space-between; align-items: center">
-                        <label>Color</label>
-                        <button
-                            @click="showGridPalette = !showGridPalette"
-                            style="background: none; border: none; color: var(--color-white-dark); cursor: pointer; font-size: 0.8rem; padding: 0">
-                            {{ showGridPalette ? "▲" : "▼" }}
-                        </button>
-                    </div>
+            <TransitionExpand :expanded="showMainGridStyle">
+                <div style="padding: 10px; background-color: var(--color-black-light--1); border-radius: 0 0 4px 4px">
+                    <div class="control-group">
+                        <div style="display: flex; justify-content: space-between; align-items: center">
+                            <label>Color</label>
+                            <button
+                                @click="showGridPalette = !showGridPalette"
+                                style="background: none; border: none; color: var(--color-white-dark); cursor: pointer; font-size: 0.8rem; padding: 0">
+                                {{ showGridPalette ? "▲" : "▼" }}
+                            </button>
+                        </div>
 
-                    <input
-                        type="hidden"
-                        id="gridColorPicker"
-                        :value="selectedGridColor" />
+                        <input
+                            type="hidden"
+                            id="gridColorPicker"
+                            :value="selectedGridColor" />
 
-                    <div
-                        v-if="showGridPalette"
-                        class="palette"
-                        style="grid-template-columns: repeat(7, 1fr); margin-top: 5px">
                         <div
-                            v-for="color in gridColors"
-                            :key="color.value"
-                            class="swatch"
-                            :class="{ selected: selectedGridColor === color.value }"
-                            :style="{ backgroundColor: color.value }"
-                            :title="color.name"
-                            @click="selectGridColor(color.value)"></div>
+                            v-if="showGridPalette"
+                            class="palette"
+                            style="grid-template-columns: repeat(7, 1fr); margin-top: 5px">
+                            <div
+                                v-for="color in gridColors"
+                                :key="color.value"
+                                class="swatch"
+                                :class="{ selected: selectedGridColor === color.value }"
+                                :style="{ backgroundColor: color.value }"
+                                :title="color.name"
+                                @click="selectGridColor(color.value)"></div>
+                        </div>
+                        <div
+                            v-else
+                            @click="showGridPalette = true"
+                            style="cursor: pointer; height: 25px; border-radius: 4px; border: 1px solid var(--border); margin-top: 5px"
+                            :style="{ backgroundColor: selectedGridColor }"></div>
                     </div>
-                    <div
-                        v-else
-                        @click="showGridPalette = true"
-                        style="cursor: pointer; height: 25px; border-radius: 4px; border: 1px solid var(--border); margin-top: 5px"
-                        :style="{ backgroundColor: selectedGridColor }"></div>
-                </div>
 
-                <div class="control-group">
-                    <label>Style</label>
-                    <div
-                        class="input-row"
-                        style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px">
-                        <select
-                            id="gridStyleSelect"
-                            style="position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px"
-                            :value="selectedGridStyle">
-                            <option value="solid">Solid</option>
-                            <option value="dashed">Dashed</option>
-                            <option value="dotted">Dotted</option>
-                        </select>
+                    <div class="control-group">
+                        <label>Style</label>
+                        <div
+                            class="input-row"
+                            style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px">
+                            <select
+                                id="gridStyleSelect"
+                                style="position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px"
+                                :value="selectedGridStyle">
+                                <option value="solid">Solid</option>
+                                <option value="dashed">Dashed</option>
+                                <option value="dotted">Dotted</option>
+                            </select>
 
-                        <button
-                            class="style-btn"
-                            :class="{ active: selectedGridStyle === 'solid' }"
-                            @click="selectGridStyle('solid')"
-                            title="Solid">
-                            <div style="width: 100%; height: 2px; background-color: currentColor"></div>
-                        </button>
-                        <button
-                            class="style-btn"
-                            :class="{ active: selectedGridStyle === 'dashed' }"
-                            @click="selectGridStyle('dashed')"
-                            title="Dashed">
-                            <div style="width: 100%; height: 0; border-top: 2px dashed currentColor"></div>
-                        </button>
-                        <button
-                            class="style-btn"
-                            :class="{ active: selectedGridStyle === 'dotted' }"
-                            @click="selectGridStyle('dotted')"
-                            title="Dotted">
-                            <div style="width: 100%; height: 0; border-top: 2px dotted currentColor"></div>
-                        </button>
+                            <button
+                                class="style-btn"
+                                :class="{ active: selectedGridStyle === 'solid' }"
+                                @click="selectGridStyle('solid')"
+                                title="Solid">
+                                <div style="width: 100%; height: 2px; background-color: currentColor"></div>
+                            </button>
+                            <button
+                                class="style-btn"
+                                :class="{ active: selectedGridStyle === 'dashed' }"
+                                @click="selectGridStyle('dashed')"
+                                title="Dashed">
+                                <div style="width: 100%; height: 0; border-top: 2px dashed currentColor"></div>
+                            </button>
+                            <button
+                                class="style-btn"
+                                :class="{ active: selectedGridStyle === 'dotted' }"
+                                @click="selectGridStyle('dotted')"
+                                title="Dotted">
+                                <div style="width: 100%; height: 0; border-top: 2px dotted currentColor"></div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label>Thickness</label>
+                        <div class="input-row">
+                            <input
+                                type="range"
+                                id="gridThicknessSlider"
+                                min="0.1"
+                                max="1.5"
+                                step="0.1"
+                                value="0.5" />
+                            <span id="gridThicknessVal">0.5</span>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label>Opacity</label>
+                        <div class="input-row">
+                            <input
+                                type="range"
+                                id="gridOpacitySlider"
+                                min="0"
+                                max="1"
+                                step="0.1"
+                                value="0.2" />
+                            <span id="gridOpacityVal">0.2</span>
+                        </div>
                     </div>
                 </div>
-
-                <div class="control-group">
-                    <label>Thickness</label>
-                    <div class="input-row">
-                        <input
-                            type="range"
-                            id="gridThicknessSlider"
-                            min="0.1"
-                            max="1.5"
-                            step="0.1"
-                            value="0.5" />
-                        <span id="gridThicknessVal">0.5</span>
-                    </div>
-                </div>
-
-                <div class="control-group">
-                    <label>Opacity</label>
-                    <div class="input-row">
-                        <input
-                            type="range"
-                            id="gridOpacitySlider"
-                            min="0"
-                            max="1"
-                            step="0.1"
-                            value="0.2" />
-                        <span id="gridOpacityVal">0.2</span>
-                    </div>
-                </div>
-            </div>
+            </TransitionExpand>
         </div>
 
         <hr style="border-color: var(--border); margin: 10px 0" />
@@ -282,110 +283,110 @@
                 <span style="font-size: 0.8rem; color: var(--color-white-dark)">{{ showSubGridStyle ? "▲" : "▼" }}</span>
             </div>
 
-            <div
-                v-show="showSubGridStyle"
-                style="padding: 10px; background-color: var(--color-black-light--1); border-radius: 0 0 4px 4px">
-                <div class="control-group">
-                    <div style="display: flex; justify-content: space-between; align-items: center">
-                        <label>Color</label>
-                        <button
-                            @click="showSubGridPalette = !showSubGridPalette"
-                            style="background: none; border: none; color: var(--color-white-dark); cursor: pointer; font-size: 0.8rem; padding: 0">
-                            {{ showSubGridPalette ? "▲" : "▼" }}
-                        </button>
-                    </div>
+            <TransitionExpand :expanded="showSubGridStyle">
+                <div style="padding: 10px; background-color: var(--color-black-light--1); border-radius: 0 0 4px 4px">
+                    <div class="control-group">
+                        <div style="display: flex; justify-content: space-between; align-items: center">
+                            <label>Color</label>
+                            <button
+                                @click="showSubGridPalette = !showSubGridPalette"
+                                style="background: none; border: none; color: var(--color-white-dark); cursor: pointer; font-size: 0.8rem; padding: 0">
+                                {{ showSubGridPalette ? "▲" : "▼" }}
+                            </button>
+                        </div>
 
-                    <input
-                        type="hidden"
-                        id="subGridColorPicker"
-                        :value="selectedSubGridColor" />
+                        <input
+                            type="hidden"
+                            id="subGridColorPicker"
+                            :value="selectedSubGridColor" />
 
-                    <div
-                        v-if="showSubGridPalette"
-                        class="palette"
-                        style="grid-template-columns: repeat(7, 1fr); margin-top: 5px">
                         <div
-                            v-for="color in gridColors"
-                            :key="color.value"
-                            class="swatch"
-                            :class="{ selected: selectedSubGridColor === color.value }"
-                            :style="{ backgroundColor: color.value }"
-                            :title="color.name"
-                            @click="selectSubGridColor(color.value)"></div>
+                            v-if="showSubGridPalette"
+                            class="palette"
+                            style="grid-template-columns: repeat(7, 1fr); margin-top: 5px">
+                            <div
+                                v-for="color in gridColors"
+                                :key="color.value"
+                                class="swatch"
+                                :class="{ selected: selectedSubGridColor === color.value }"
+                                :style="{ backgroundColor: color.value }"
+                                :title="color.name"
+                                @click="selectSubGridColor(color.value)"></div>
+                        </div>
+                        <div
+                            v-else
+                            @click="showSubGridPalette = true"
+                            style="cursor: pointer; height: 25px; border-radius: 4px; border: 1px solid var(--border); margin-top: 5px"
+                            :style="{ backgroundColor: selectedSubGridColor }"></div>
                     </div>
-                    <div
-                        v-else
-                        @click="showSubGridPalette = true"
-                        style="cursor: pointer; height: 25px; border-radius: 4px; border: 1px solid var(--border); margin-top: 5px"
-                        :style="{ backgroundColor: selectedSubGridColor }"></div>
-                </div>
 
-                <div class="control-group">
-                    <label>Style</label>
-                    <div
-                        class="input-row"
-                        style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px">
-                        <select
-                            id="subGridStyleSelect"
-                            style="position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px"
-                            :value="selectedSubGridStyle">
-                            <option value="solid">Solid</option>
-                            <option value="dashed">Dashed</option>
-                            <option value="dotted">Dotted</option>
-                        </select>
+                    <div class="control-group">
+                        <label>Style</label>
+                        <div
+                            class="input-row"
+                            style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px">
+                            <select
+                                id="subGridStyleSelect"
+                                style="position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px"
+                                :value="selectedSubGridStyle">
+                                <option value="solid">Solid</option>
+                                <option value="dashed">Dashed</option>
+                                <option value="dotted">Dotted</option>
+                            </select>
 
-                        <button
-                            class="style-btn"
-                            :class="{ active: selectedSubGridStyle === 'solid' }"
-                            @click="selectSubGridStyle('solid')"
-                            title="Solid">
-                            <div style="width: 100%; height: 2px; background-color: currentColor"></div>
-                        </button>
-                        <button
-                            class="style-btn"
-                            :class="{ active: selectedSubGridStyle === 'dashed' }"
-                            @click="selectSubGridStyle('dashed')"
-                            title="Dashed">
-                            <div style="width: 100%; height: 0; border-top: 2px dashed currentColor"></div>
-                        </button>
-                        <button
-                            class="style-btn"
-                            :class="{ active: selectedSubGridStyle === 'dotted' }"
-                            @click="selectSubGridStyle('dotted')"
-                            title="Dotted">
-                            <div style="width: 100%; height: 0; border-top: 2px dotted currentColor"></div>
-                        </button>
+                            <button
+                                class="style-btn"
+                                :class="{ active: selectedSubGridStyle === 'solid' }"
+                                @click="selectSubGridStyle('solid')"
+                                title="Solid">
+                                <div style="width: 100%; height: 2px; background-color: currentColor"></div>
+                            </button>
+                            <button
+                                class="style-btn"
+                                :class="{ active: selectedSubGridStyle === 'dashed' }"
+                                @click="selectSubGridStyle('dashed')"
+                                title="Dashed">
+                                <div style="width: 100%; height: 0; border-top: 2px dashed currentColor"></div>
+                            </button>
+                            <button
+                                class="style-btn"
+                                :class="{ active: selectedSubGridStyle === 'dotted' }"
+                                @click="selectSubGridStyle('dotted')"
+                                title="Dotted">
+                                <div style="width: 100%; height: 0; border-top: 2px dotted currentColor"></div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label>Thickness</label>
+                        <div class="input-row">
+                            <input
+                                type="range"
+                                id="subGridThicknessSlider"
+                                min="0.1"
+                                max="1.5"
+                                step="0.1"
+                                value="0.5" />
+                            <span id="subGridThicknessVal">0.5</span>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label>Opacity</label>
+                        <div class="input-row">
+                            <input
+                                type="range"
+                                id="subGridOpacitySlider"
+                                min="0"
+                                max="1"
+                                step="0.1"
+                                value="1" />
+                            <span id="subGridOpacityVal">1.0</span>
+                        </div>
                     </div>
                 </div>
-
-                <div class="control-group">
-                    <label>Thickness</label>
-                    <div class="input-row">
-                        <input
-                            type="range"
-                            id="subGridThicknessSlider"
-                            min="0.1"
-                            max="1.5"
-                            step="0.1"
-                            value="0.5" />
-                        <span id="subGridThicknessVal">0.5</span>
-                    </div>
-                </div>
-
-                <div class="control-group">
-                    <label>Opacity</label>
-                    <div class="input-row">
-                        <input
-                            type="range"
-                            id="subGridOpacitySlider"
-                            min="0"
-                            max="1"
-                            step="0.1"
-                            value="1" />
-                        <span id="subGridOpacityVal">1.0</span>
-                    </div>
-                </div>
-            </div>
+            </TransitionExpand>
         </div>
 
         <div class="control-group">
