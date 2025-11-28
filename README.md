@@ -2,6 +2,8 @@
 
 A web-based triangle-pixel art engine that renders images using triangular pixels instead of traditional square pixels. Create and manipulate unique triangle-based pixel art through an interactive web interface.
 
+![Screenshot of AutoTrixel](/src/assets/screenshot.png)
+
 ## 🎨 Features
 
 -   **Triangle-Pixel Rendering**: Unique artistic effects using triangular grid patterns instead of square pixels
