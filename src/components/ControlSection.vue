@@ -41,8 +41,8 @@
 
 <style scoped>
     .control-section {
-        background-color: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.05);
+        background-color: var(--color-primary-dark);
+        border: 1px solid var(--border);
         border-radius: 6px;
         margin-bottom: 8px;
         overflow: hidden;
@@ -51,8 +51,7 @@
     }
 
     .control-section:hover {
-        border-color: rgba(255, 255, 255, 0.1);
-        background-color: rgba(255, 255, 255, 0.05);
+        border-color: var(--accent);
     }
 
     .section-header {
@@ -61,21 +60,21 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        background-color: rgba(0, 0, 0, 0.2);
+        background-color: var(--color-primary-light);
         user-select: none;
     }
 
     .section-title {
         font-size: 0.8rem;
         font-weight: 600;
-        color: #ddd;
+        color: var(--color-white);
         text-transform: uppercase;
         letter-spacing: 0.5px;
     }
 
     .toggle-icon {
         font-size: 0.7rem;
-        color: #888;
+        color: var(--color-white-dark);
         transition: transform 0.2s;
     }
 

@@ -15,7 +15,7 @@
             <div id="colorPreviewBox"></div>
             <div
                 id="colorCodeDisplay"
-                style="flex: 1; font-family: monospace; font-size: 0.8rem; color: #888">
+                style="flex: 1; font-family: monospace; font-size: 0.8rem; color: var(--color-white-dark)">
                 #00d2ff
             </div>
         </div>

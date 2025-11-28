@@ -11,12 +11,12 @@
         display: inline-block;
         font-size: 0.5rem;
         font-weight: 500;
-        color: var(--text-secondary);
-        background-color: var(--bg-secondary);
+        color: var(--color-white);
+        background-color: var(--color-tertiary);
         padding: 2px 6px;
         border-radius: 4px;
         margin-left: 8px;
         vertical-align: middle;
-        border: 1px solid var(--border-color);
+        border: 1px solid var(--border);
     }
 </style>

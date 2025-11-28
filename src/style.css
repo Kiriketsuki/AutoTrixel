@@ -1,11 +1,73 @@
+@import "tailwindcss";
+
+@theme {
+    /* Base Colors */
+
+    /* ! Black */
+    --color-black-light--1: oklch(0.31 0.004 84.58);
+    --color-black-light: oklch(0.36 0.004 84.58);
+    --color-black-light-1: oklch(0.41 0.004 84.58);
+
+    --color-black: oklch(0.26 0.004 84.58);
+
+    --color-black-dark--1: oklch(0.21 0.004 84.58);
+    --color-black-dark: oklch(0.16 0.004 84.58);
+    --color-black-dark-1: oklch(0.11 0.004 84.58);
+
+    /* ! White */
+    --color-white-light--1: oklch(0.8758 0.0183 81.32);
+    --color-white-light: oklch(0.9258 0.0183 81.32);
+    --color-white-light-1: oklch(0.9758 0.0183 81.32);
+
+    --color-white: oklch(0.8258 0.0183 81.32);
+
+    --color-white-dark--1: oklch(0.7758 0.0183 81.32);
+    --color-white-dark: oklch(0.7258 0.0183 81.32);
+    --color-white-dark-1: oklch(0.6758 0.0183 81.32);
+
+    /* ! Primary Color (Blue) */
+    --color-primary-light--1: oklch(0.6 0.0947 210);
+    --color-primary-light: oklch(0.65 0.0947 210);
+    --color-primary-light-1: oklch(0.7 0.0947 210);
+
+    --color-primary: oklch(0.55 0.0947 210);
+
+    --color-primary-dark--1: oklch(0.5 0.0947 210);
+    --color-primary-dark: oklch(0.45 0.0947 210);
+    --color-primary-dark-1: oklch(0.4 0.0947 210);
+
+    /* ! Secondary Color (Red) */
+    --color-secondary-light--1: oklch(0.32 0.0806 5.14);
+    --color-secondary-light: oklch(0.37 0.0806 5.14);
+    --color-secondary-light-1: oklch(0.42 0.0806 5.14);
+
+    --color-secondary: oklch(0.27 0.0806 5.14);
+
+    --color-secondary-dark--1: oklch(0.22 0.0806 5.14);
+    --color-secondary-dark: oklch(0.17 0.0806 5.14);
+    --color-secondary-dark-1: oklch(0.12 0.0806 5.14);
+
+    /* ! Tertiary Color (Purple) */
+    --color-tertiary-light--1: oklch(0.59 0.1186 303.58);
+    --color-tertiary-light: oklch(0.64 0.1186 303.58);
+    --color-tertiary-light-1: oklch(0.69 0.1186 303.58);
+    
+    --color-tertiary: oklch(0.54 0.1186 303.58);
+    
+    --color-tertiary-dark--1: oklch(0.49 0.1186 303.58);
+    --color-tertiary-dark: oklch(0.44 0.1186 303.58);
+    --color-tertiary-dark-1: oklch(0.39 0.1186 303.58);
+}
+
 :root {
-    --bg-color: #1a1a1a;
-    --panel-bg: #252525;
-    --text-color: #e0e0e0;
-    --accent: #00d2ff;
-    --accent-hover: #33dfff;
-    --border: #333;
-    --danger: #ff4444;
+    /* Mapping legacy variables to new system */
+    --bg-color: var(--color-primary-dark-1); /* Body background */
+    --panel-bg: var(--color-black-dark--1); /* Panel/Sidebar */
+    --text-color: var(--color-white-dark);
+    --accent: var(--color-secondary-dark); /* Accent (Red) */
+    --accent-hover: var(--color-secondary-dark);
+    --border: var(--color-primary-dark); /* Borders on panels */
+    --danger: #ff0000;
 }
 
 * {
@@ -61,9 +123,9 @@ body.sidebar-closed #sidebar {
     top: 10px;
     left: 330px;
     z-index: 30;
-    background: var(--panel-bg);
+    background: var(--color-tertiary);
     border: 1px solid var(--border);
-    color: var(--accent);
+    color: var(--color-text-main);
     width: 40px;
     height: 40px;
     border-radius: 50%;
@@ -86,7 +148,7 @@ body.sidebar-closed #sidebarToggle {
 h1 {
     font-size: 1.4rem;
     margin: 0;
-    color: var(--accent);
+    color: var(--color-tertiary);
     text-transform: uppercase;
     letter-spacing: 2px;
     display: flex;
@@ -102,7 +164,7 @@ h1 {
 
 label {
     font-size: 0.8rem;
-    color: #888;
+    color: var(--color-white-dark);
     font-weight: 600;
     display: flex;
     justify-content: space-between;
@@ -116,9 +178,9 @@ label {
 }
 
 .tool-btn {
-    background: #333;
-    border: 1px solid #444;
-    color: white;
+    background: var(--color-primary-dark);
+    border: 1px solid var(--border);
+    color: var(--text-color);
     padding: 8px;
     border-radius: 6px;
     cursor: pointer;
@@ -131,20 +193,20 @@ label {
 }
 
 .tool-btn:hover {
-    background: #444;
+    background: var(--color-primary-light);
 }
 
 .tool-btn.active {
     background: var(--accent);
-    color: #000;
+    color: var(--color-primary-dark);
     border-color: var(--accent);
     font-weight: bold;
 }
 
 .undo-btn {
-    background: #444;
-    border: 1px solid #555;
-    color: white;
+    background: var(--color-primary-dark);
+    border: 1px solid var(--border);
+    color: var(--text-color);
     padding: 8px;
     border-radius: 6px;
     cursor: pointer;
@@ -156,7 +218,7 @@ label {
 }
 
 .undo-btn:active {
-    background: #333;
+    background: var(--color-primary);
 }
 
 .undo-btn:disabled {
@@ -166,11 +228,11 @@ label {
 
 .tutorial-box {
     background: rgba(0, 0, 0, 0.2);
-    border: 1px solid #444;
+    border: 1px solid var(--border);
     border-radius: 6px;
     padding: 10px;
     font-size: 0.75rem;
-    color: #ccc;
+    color: var(--color-white);
 }
 
 .tutorial-box h3 {
@@ -183,7 +245,7 @@ label {
     display: flex;
     justify-content: space-between;
     margin-bottom: 4px;
-    border-bottom: 1px solid #333;
+    border-bottom: 1px solid var(--border);
     padding-bottom: 2px;
 }
 
@@ -193,16 +255,16 @@ label {
 }
 
 .kbd {
-    background: #222;
+    background: var(--color-primary-dark);
     padding: 1px 4px;
     border-radius: 3px;
     font-family: monospace;
-    border: 1px solid #555;
-    color: #fff;
+    border: 1px solid var(--border);
+    color: var(--text-color);
 }
 
 .color-section {
-    border-top: 1px solid #333;
+    border-top: 1px solid var(--border);
     padding-top: 15px;
 }
 
@@ -216,8 +278,8 @@ label {
     width: 40px;
     height: 40px;
     border-radius: 6px;
-    border: 2px solid #555;
-    background-color: #00d2ff;
+    border: 2px solid var(--border);
+    background-color: var(--accent);
 }
 
 .slider-row {
@@ -228,7 +290,7 @@ label {
 
 .slider-label {
     font-size: 0.75rem;
-    color: #aaa;
+    color: var(--color-white-dark);
 }
 
 .palette {
@@ -271,8 +333,8 @@ input[type="range"] {
 
 input[type="number"] {
     width: 60px;
-    background: #111;
-    border: 1px solid #444;
+    background: var(--color-primary-dark);
+    border: 1px solid var(--border);
     color: var(--accent);
     padding: 4px;
     border-radius: 4px;
@@ -300,9 +362,9 @@ input[type="color"] {
 }
 
 button.action-btn {
-    background: #333;
-    color: white;
-    border: 1px solid #444;
+    background: var(--color-primary-dark);
+    color: var(--text-color);
+    border: 1px solid var(--border);
     padding: 10px;
     border-radius: 6px;
     cursor: pointer;
@@ -312,13 +374,13 @@ button.action-btn {
 }
 
 button.action-btn:hover {
-    background: #444;
-    border-color: #666;
+    background: var(--color-primary-light);
+    border-color: var(--color-white-dark);
 }
 
 button.primary {
     background: var(--accent);
-    color: #000;
+    color: var(--color-primary-dark);
     border: none;
 }
 
@@ -334,8 +396,8 @@ button.primary:hover {
 #workspace {
     flex: 1;
     position: relative;
-    background-color: #121212;
-    background-image: radial-gradient(#2a2a2a 1px, transparent 1px);
+    background-color: var(--color-black);
+    background-image: radial-gradient(var(--color-black-light) 1px, transparent 1px);
     background-size: 20px 20px;
     background-position: 0 0;
     overflow: hidden;
@@ -350,7 +412,7 @@ button.primary:hover {
     position: relative;
     box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
     line-height: 0;
-    background-color: rgba(18, 18, 18, 0.7);
+    background-color: color-mix(in srgb, var(--color-black), transparent 30%);
 }
 
 canvas {
@@ -376,7 +438,7 @@ canvas {
     bottom: 20px;
     right: 20px;
     background: var(--accent);
-    color: #000;
+    color: var(--color-primary-dark);
     padding: 10px 20px;
     border-radius: 4px;
     font-weight: bold;
