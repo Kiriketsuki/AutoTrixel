@@ -73,14 +73,11 @@
         class="w-[max(320px,20vw)] min-w-[max(320px,20vw)] bg-black-dark--1 border-r border-black-light flex flex-col p-[15px] gap-2 shadow-lg z-20 overflow-y-auto transition-[margin] duration-300 ease-in-out touch-pan-y"
         :class="{ '-ml-[calc(max(320px,20vw)+1px)]': !isOpen }">
         <h1 class="text-2xl text-primary uppercase tracking-widest flex items-center gap-2.5 m-0">
-            <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="currentColor">
-                <path d="M12 2L1 21h22L12 2zm0 3.516L19.297 19H4.703L12 5.516z" />
-            </svg>
-            AutoTrixel
+            <img
+                src="/AutoTrixel.svg"
+                alt="AutoTrixel Logo"
+                class="w-8 h-8" />
+            <span>AutoTrixel</span>
             <VersionBadge />
         </h1>
 
