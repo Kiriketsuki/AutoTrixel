@@ -1,4 +1,4 @@
-const REQUIRED_SELECTORS = ["#artLayer", "#cursorLayer", "#canvas-stack", "#toast", "#brushInput", "#brushVal", "#lInput", "#cInput", "#hInput", "#colorPreviewBox", "#colorCodeDisplay", "#palette", "#scaleSlider", "#scaleNumber", "#widthSlider", "#widthNumber", "#heightSlider", "#heightNumber", "#gridToggle", "#gridColorPicker", "#exportGridToggle", "#btnUndo"];
+const REQUIRED_SELECTORS = ["#artLayer", "#cursorLayer", "#canvas-stack", "#toast", "#brushInput", "#brushVal", "#lInput", "#cInput", "#hInput", "#colorPreviewBox", "#colorCodeDisplay", "#palette", "#scaleSlider", "#scaleNumber", "#widthSlider", "#widthNumber", "#heightSlider", "#heightNumber", "#gridToggle", "#gridColorPicker", "#exportGridToggle", "#btnUndo", "#workspace"];
 
 export function createAutoTrixel(rootElement) {
     if (!rootElement) {
@@ -25,6 +25,7 @@ export function createAutoTrixel(rootElement) {
     const cursorCanvas = select("#cursorLayer");
     const cursorCtx = cursorCanvas.getContext("2d");
     const canvasStack = select("#canvas-stack");
+    const workspace = select("#workspace");
     const toast = select("#toast");
     const brushInput = select("#brushInput");
     const brushVal = select("#brushVal");
@@ -72,6 +73,14 @@ export function createAutoTrixel(rootElement) {
     let storedBrushSize = 1;
     let lastMouseX = 0;
     let lastMouseY = 0;
+
+    let isPanning = false;
+    let panStartX = 0;
+    let panStartY = 0;
+    let panOffsetX = 0;
+    let panOffsetY = 0;
+    let startPanOffsetX = 0;
+    let startPanOffsetY = 0;
 
     let historyQueue = [];
     const MAX_HISTORY = 10;
@@ -195,6 +204,10 @@ export function createAutoTrixel(rootElement) {
         canvasStack.style.height = `${h}px`;
 
         fullRedraw();
+    }
+
+    function updateCanvasTransform() {
+        canvasStack.style.transform = `translate(${panOffsetX}px, ${panOffsetY}px)`;
     }
 
     function pixelToGrid(x, y) {
@@ -576,6 +589,18 @@ export function createAutoTrixel(rootElement) {
 
     function setupEvents() {
         cursorCanvas.addEventListener("mousedown", (e) => {
+            if (e.button === 1) {
+                // Middle click pan
+                e.preventDefault();
+                isPanning = true;
+                panStartX = e.clientX;
+                panStartY = e.clientY;
+                startPanOffsetX = panOffsetX;
+                startPanOffsetY = panOffsetY;
+                cursorCanvas.style.cursor = "grabbing";
+                return;
+            }
+
             const rect = cursorCanvas.getBoundingClientRect();
             lastMouseX = e.clientX - rect.left;
             lastMouseY = e.clientY - rect.top;
@@ -586,7 +611,14 @@ export function createAutoTrixel(rootElement) {
             handleSingleClick();
         });
 
-        addWindowListener("mouseup", () => {
+        addWindowListener("mouseup", (e) => {
+            if (isPanning) {
+                isPanning = false;
+                if (currentTool === "picker") cursorCanvas.style.cursor = "crosshair";
+                else cursorCanvas.style.cursor = "crosshair";
+                return;
+            }
+
             if (isDrawing) {
                 isDrawing = false;
                 const newState = JSON.stringify(gridData);
@@ -597,6 +629,15 @@ export function createAutoTrixel(rootElement) {
         });
 
         cursorCanvas.addEventListener("mousemove", (e) => {
+            if (isPanning) {
+                const dx = e.clientX - panStartX;
+                const dy = e.clientY - panStartY;
+                panOffsetX = startPanOffsetX + dx;
+                panOffsetY = startPanOffsetY + dy;
+                updateCanvasTransform();
+                return;
+            }
+
             const rect = cursorCanvas.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
@@ -629,14 +670,34 @@ export function createAutoTrixel(rootElement) {
 
         cursorCanvas.addEventListener("mouseleave", () => {
             hoveredCells = [];
-            isDrawing = false;
             drawCursor();
+        });
+
+        cursorCanvas.addEventListener("mouseenter", (e) => {
+            if (isDrawing) {
+                const rect = cursorCanvas.getBoundingClientRect();
+                lastMouseX = e.clientX - rect.left;
+                lastMouseY = e.clientY - rect.top;
+            }
         });
 
         cursorCanvas.addEventListener(
             "touchstart",
             (e) => {
                 e.preventDefault();
+                if (e.touches.length === 2) {
+                    // Two finger pan
+                    isPanning = true;
+                    isDrawing = false; // Cancel drawing if it started
+                    const t1 = e.touches[0];
+                    const t2 = e.touches[1];
+                    panStartX = (t1.clientX + t2.clientX) / 2;
+                    panStartY = (t1.clientY + t2.clientY) / 2;
+                    startPanOffsetX = panOffsetX;
+                    startPanOffsetY = panOffsetY;
+                    return;
+                }
+
                 if (e.touches.length > 0) {
                     const touch = e.touches[0];
                     const rect = cursorCanvas.getBoundingClientRect();
@@ -668,6 +729,19 @@ export function createAutoTrixel(rootElement) {
             "touchmove",
             (e) => {
                 e.preventDefault();
+                if (isPanning && e.touches.length === 2) {
+                    const t1 = e.touches[0];
+                    const t2 = e.touches[1];
+                    const cx = (t1.clientX + t2.clientX) / 2;
+                    const cy = (t1.clientY + t2.clientY) / 2;
+                    const dx = cx - panStartX;
+                    const dy = cy - panStartY;
+                    panOffsetX = startPanOffsetX + dx;
+                    panOffsetY = startPanOffsetY + dy;
+                    updateCanvasTransform();
+                    return;
+                }
+
                 if (e.touches.length > 0) {
                     const touch = e.touches[0];
                     const rect = cursorCanvas.getBoundingClientRect();
@@ -700,7 +774,10 @@ export function createAutoTrixel(rootElement) {
             { passive: false },
         );
 
-        addWindowListener("touchend", () => {
+        addWindowListener("touchend", (e) => {
+            if (isPanning && e.touches.length < 2) {
+                isPanning = false;
+            }
             if (isDrawing) {
                 isDrawing = false;
                 const newState = JSON.stringify(gridData);
@@ -717,16 +794,34 @@ export function createAutoTrixel(rootElement) {
                     undoAction();
                 } else if (e.key === "=" || e.key === "+") {
                     e.preventDefault();
-                    updateBrushSize(1);
+                    zoom(5);
                 } else if (e.key === "-") {
                     e.preventDefault();
-                    updateBrushSize(-1);
+                    zoom(-5);
                 } else if (e.key === "[") {
                     e.preventDefault();
-                    zoom(-5);
+                    updateBrushSize(-1);
                 } else if (e.key === "]") {
                     e.preventDefault();
-                    zoom(5);
+                    updateBrushSize(1);
+                }
+            } else {
+                if (e.key === "ArrowUp") {
+                    e.preventDefault();
+                    panOffsetY -= 20;
+                    updateCanvasTransform();
+                } else if (e.key === "ArrowDown") {
+                    e.preventDefault();
+                    panOffsetY += 20;
+                    updateCanvasTransform();
+                } else if (e.key === "ArrowLeft") {
+                    e.preventDefault();
+                    panOffsetX -= 20;
+                    updateCanvasTransform();
+                } else if (e.key === "ArrowRight") {
+                    e.preventDefault();
+                    panOffsetX += 20;
+                    updateCanvasTransform();
                 }
             }
         });
@@ -737,7 +832,7 @@ export function createAutoTrixel(rootElement) {
                 if (e.ctrlKey) {
                     e.preventDefault();
                     const delta = e.deltaY < 0 ? 1 : -1;
-                    updateBrushSize(delta);
+                    zoom(delta * 5);
                 }
             },
             { passive: false },
