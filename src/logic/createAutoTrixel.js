@@ -220,6 +220,22 @@ export function createAutoTrixel(rootElement) {
                     finalCol = localX + localY <= 1 ? colApprox - 1 : colApprox;
                 }
             }
+        } else {
+            // Handle the other parity case (checkerboard pattern)
+            const isEvenRow = row % 2 === 0;
+            if (isEvenRow) {
+                if (colApprox % 2 !== 0) {
+                    finalCol = localX + localY >= 1 ? colApprox : colApprox - 1;
+                } else {
+                    finalCol = localY >= localX ? colApprox - 1 : colApprox;
+                }
+            } else {
+                if (colApprox % 2 !== 0) {
+                    finalCol = localX >= localY ? colApprox : colApprox - 1;
+                } else {
+                    finalCol = localX + localY <= 1 ? colApprox - 1 : colApprox;
+                }
+            }
         }
 
         if (row < 0 || row >= config.heightTriangles) return null;
@@ -243,6 +259,42 @@ export function createAutoTrixel(rootElement) {
             }
         }
         return coords;
+    }
+
+    function findBestCenter(targetR, targetC, size) {
+        if (size <= 1) return { r: targetR, c: targetC };
+
+        let bestAnchor = { r: targetR, c: targetC };
+        let minDist = Infinity;
+        const range = Math.ceil(size / 2) + 1;
+
+        for (let dr = -range; dr <= range; dr++) {
+            for (let dc = -1; dc <= 1; dc++) {
+                const r = targetR + dr;
+                const c = targetC + dc;
+
+                if (r < -size || r > config.heightTriangles + size || c < -size || c > config.widthTriangles + size) continue;
+
+                const cluster = getTriangleCluster(r, c, size);
+                if (cluster.length === 0) continue;
+
+                let sumR = 0;
+                let sumC = 0;
+                for (const cell of cluster) {
+                    sumR += cell.r;
+                    sumC += cell.c;
+                }
+                const avgR = sumR / cluster.length;
+                const avgC = sumC / cluster.length;
+
+                const dist = (avgR - targetR) ** 2 + (avgC - targetC) ** 2;
+                if (dist < minDist) {
+                    minDist = dist;
+                    bestAnchor = { r, c };
+                }
+            }
+        }
+        return bestAnchor;
     }
 
     function getTrianglePath(r, c) {
@@ -383,7 +435,11 @@ export function createAutoTrixel(rootElement) {
             const centerCell = pixelToGrid(x, y);
             if (centerCell) {
                 const useSize = currentTool === "picker" || currentTool === "bucket" ? 1 : config.brushSize;
-                const cluster = getTriangleCluster(centerCell.r, centerCell.c, useSize);
+                let anchor = { r: centerCell.r, c: centerCell.c };
+                if (useSize > 1) {
+                    anchor = findBestCenter(centerCell.r, centerCell.c, useSize);
+                }
+                const cluster = getTriangleCluster(anchor.r, anchor.c, useSize);
 
                 cluster.forEach((c) => {
                     const k = `${c.r},${c.c}`;
@@ -549,7 +605,11 @@ export function createAutoTrixel(rootElement) {
 
             if (cell) {
                 const useSize = currentTool === "picker" || currentTool === "bucket" ? 1 : config.brushSize;
-                hoveredCells = getTriangleCluster(cell.r, cell.c, useSize);
+                let anchor = { r: cell.r, c: cell.c };
+                if (useSize > 1) {
+                    anchor = findBestCenter(cell.r, cell.c, useSize);
+                }
+                hoveredCells = getTriangleCluster(anchor.r, anchor.c, useSize);
             } else {
                 hoveredCells = [];
             }
@@ -589,7 +649,11 @@ export function createAutoTrixel(rootElement) {
                     const cell = pixelToGrid(lastMouseX, lastMouseY);
                     if (cell) {
                         const useSize = currentTool === "picker" || currentTool === "bucket" ? 1 : config.brushSize;
-                        hoveredCells = getTriangleCluster(cell.r, cell.c, useSize);
+                        let anchor = { r: cell.r, c: cell.c };
+                        if (useSize > 1) {
+                            anchor = findBestCenter(cell.r, cell.c, useSize);
+                        }
+                        hoveredCells = getTriangleCluster(anchor.r, anchor.c, useSize);
                     } else {
                         hoveredCells = [];
                     }
@@ -613,7 +677,11 @@ export function createAutoTrixel(rootElement) {
                     const cell = pixelToGrid(x, y);
                     if (cell) {
                         const useSize = currentTool === "picker" || currentTool === "bucket" ? 1 : config.brushSize;
-                        hoveredCells = getTriangleCluster(cell.r, cell.c, useSize);
+                        let anchor = { r: cell.r, c: cell.c };
+                        if (useSize > 1) {
+                            anchor = findBestCenter(cell.r, cell.c, useSize);
+                        }
+                        hoveredCells = getTriangleCluster(anchor.r, anchor.c, useSize);
                     } else {
                         hoveredCells = [];
                     }
@@ -748,7 +816,7 @@ export function createAutoTrixel(rootElement) {
         }
 
         if (tool === "picker") cursorCanvas.style.cursor = "crosshair";
-        else cursorCanvas.style.cursor = "none";
+        else cursorCanvas.style.cursor = "crosshair";
 
         if (tool === "pencil" || tool === "eraser") {
             config.brushSize = storedBrushSize;
