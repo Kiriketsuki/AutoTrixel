@@ -12,7 +12,7 @@
         font-size: 0.5rem;
         font-weight: 500;
         color: var(--color-white);
-        background-color: var(--color-tertiary);
+        background-color: var(--color-secondary);
         padding: 2px 6px;
         border-radius: 4px;
         margin-left: 8px;

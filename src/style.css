@@ -51,9 +51,9 @@
     --color-tertiary-light--1: oklch(0.59 0.1186 303.58);
     --color-tertiary-light: oklch(0.64 0.1186 303.58);
     --color-tertiary-light-1: oklch(0.69 0.1186 303.58);
-    
+
     --color-tertiary: oklch(0.54 0.1186 303.58);
-    
+
     --color-tertiary-dark--1: oklch(0.49 0.1186 303.58);
     --color-tertiary-dark: oklch(0.44 0.1186 303.58);
     --color-tertiary-dark-1: oklch(0.39 0.1186 303.58);
@@ -64,9 +64,9 @@
     --bg-color: var(--color-primary-dark-1); /* Body background */
     --panel-bg: var(--color-black-dark--1); /* Panel/Sidebar */
     --text-color: var(--color-white-dark);
-    --accent: var(--color-secondary-dark); /* Accent (Red) */
-    --accent-hover: var(--color-secondary-dark);
-    --border: var(--color-primary-dark); /* Borders on panels */
+    --accent: var(--color-primary); /* Accent (Blue) */
+    --accent-hover: var(--color-primary-light);
+    --border: var(--color-black-light); /* Borders on panels */
     --danger: #ff0000;
 }
 
@@ -123,7 +123,7 @@ body.sidebar-closed #sidebar {
     top: 10px;
     left: 330px;
     z-index: 30;
-    background: var(--color-tertiary);
+    background: var(--color-secondary);
     border: 1px solid var(--border);
     color: var(--color-text-main);
     width: 40px;
@@ -148,7 +148,7 @@ body.sidebar-closed #sidebarToggle {
 h1 {
     font-size: 1.4rem;
     margin: 0;
-    color: var(--color-tertiary);
+    color: var(--color-primary);
     text-transform: uppercase;
     letter-spacing: 2px;
     display: flex;
@@ -178,7 +178,7 @@ label {
 }
 
 .tool-btn {
-    background: var(--color-primary-dark);
+    background: var(--color-black);
     border: 1px solid var(--border);
     color: var(--text-color);
     padding: 8px;
@@ -193,18 +193,20 @@ label {
 }
 
 .tool-btn:hover {
-    background: var(--color-primary-light);
+    background: var(--color-tertiary-dark-1);
+    border-color: var(--color-tertiary);
+    color: var(--color-white);
 }
 
 .tool-btn.active {
     background: var(--accent);
-    color: var(--color-primary-dark);
+    color: var(--color-white);
     border-color: var(--accent);
     font-weight: bold;
 }
 
 .undo-btn {
-    background: var(--color-primary-dark);
+    background: var(--color-black);
     border: 1px solid var(--border);
     color: var(--text-color);
     padding: 8px;
@@ -217,8 +219,14 @@ label {
     font-size: 0.85rem;
 }
 
+.undo-btn:hover {
+    background: var(--color-tertiary-dark-1);
+    border-color: var(--color-tertiary);
+    color: var(--color-white);
+}
+
 .undo-btn:active {
-    background: var(--color-primary);
+    background: var(--color-tertiary-dark);
 }
 
 .undo-btn:disabled {
@@ -255,7 +263,7 @@ label {
 }
 
 .kbd {
-    background: var(--color-primary-dark);
+    background: var(--color-black);
     padding: 1px 4px;
     border-radius: 3px;
     font-family: monospace;
@@ -329,11 +337,16 @@ input[type="range"] {
     flex: 1;
     accent-color: var(--accent);
     height: 4px;
+    transition: accent-color 0.2s;
+}
+
+input[type="range"]:hover {
+    accent-color: var(--color-tertiary);
 }
 
 input[type="number"] {
     width: 60px;
-    background: var(--color-primary-dark);
+    background: var(--color-black);
     border: 1px solid var(--border);
     color: var(--accent);
     padding: 4px;
@@ -362,7 +375,7 @@ input[type="color"] {
 }
 
 button.action-btn {
-    background: var(--color-primary-dark);
+    background: var(--color-black);
     color: var(--text-color);
     border: 1px solid var(--border);
     padding: 10px;
@@ -374,13 +387,14 @@ button.action-btn {
 }
 
 button.action-btn:hover {
-    background: var(--color-primary-light);
-    border-color: var(--color-white-dark);
+    background: var(--color-tertiary-dark-1);
+    border-color: var(--color-tertiary);
+    color: var(--color-white);
 }
 
 button.primary {
     background: var(--accent);
-    color: var(--color-primary-dark);
+    color: var(--color-white);
     border: none;
 }
 

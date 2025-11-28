@@ -41,7 +41,7 @@
 
 <style scoped>
     .control-section {
-        background-color: var(--color-primary-dark);
+        background-color: var(--color-black);
         border: 1px solid var(--border);
         border-radius: 6px;
         margin-bottom: 8px;
@@ -60,8 +60,9 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        background-color: var(--color-primary-light);
+        background-color: var(--color-black-light);
         user-select: none;
+        border-bottom: 1px solid var(--border);
     }
 
     .section-title {

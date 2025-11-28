@@ -921,7 +921,13 @@ export function createAutoTrixel(rootElement) {
         });
 
         gridColorPicker.addEventListener("input", (e) => {
-            config.gridColor = e.target.value;
+            // Resolve CSS variable if needed
+            let color = e.target.value;
+            if (color.startsWith("var(")) {
+                const varName = color.match(/var\(([^)]+)\)/)[1];
+                color = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+            }
+            config.gridColor = color;
             fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
         });
 

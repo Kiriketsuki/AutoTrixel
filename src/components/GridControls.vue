@@ -98,8 +98,8 @@
                     min="0"
                     max="1"
                     step="0.1"
-                    value="1" />
-                <span id="gridOpacityVal">1.0</span>
+                    value="0.2" />
+                <span id="gridOpacityVal">0.2</span>
             </div>
         </div>
 
@@ -114,11 +114,28 @@
             </div>
             <div style="display: flex; gap: 10px; align-items: center; justify-content: space-between; margin-top: 5px">
                 <span style="font-size: 0.85rem">Grid Color</span>
-                <input
-                    type="color"
+                <select
                     id="gridColorPicker"
-                    value="#222222"
-                    style="width: 40px; height: 25px" />
+                    style="width: 120px">
+                    <option value="var(--color-black-light--1)">Black Light -1</option>
+                    <option value="var(--color-black-light)">Black Light</option>
+                    <option value="var(--color-black-light-1)">Black Light +1</option>
+                    <option value="var(--color-black)">Black</option>
+                    <option value="var(--color-black-dark--1)">Black Dark -1</option>
+                    <option value="var(--color-black-dark)">Black Dark</option>
+                    <option value="var(--color-black-dark-1)">Black Dark +1</option>
+                    <option value="var(--color-white-light--1)">White Light -1</option>
+                    <option value="var(--color-white-light)">White Light</option>
+                    <option value="var(--color-white-light-1)">White Light +1</option>
+                    <option value="var(--color-white)">White</option>
+                    <option
+                        value="var(--color-white-dark--1)"
+                        selected>
+                        White Dark -1
+                    </option>
+                    <option value="var(--color-white-dark)">White Dark</option>
+                    <option value="var(--color-white-dark-1)">White Dark +1</option>
+                </select>
             </div>
         </div>
 
