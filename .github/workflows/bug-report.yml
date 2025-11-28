@@ -1,0 +1,323 @@
+name: Bug Report Handler
+
+on:
+    issues:
+        types: [opened, labeled, closed]
+
+jobs:
+    handle-bug-report:
+        # Only run for issues with 'bug' or 'bugfix' label
+        if: contains(github.event.issue.labels.*.name, 'bug') || contains(github.event.issue.labels.*.name, 'bugfix')
+        runs-on: ubuntu-latest
+        permissions:
+            issues: write
+            contents: write
+            pull-requests: write
+
+        steps:
+            - name: Checkout repository
+              if: (github.event.action == 'opened' || github.event.action == 'labeled') && github.event.issue.state == 'open'
+              uses: actions/checkout@v5
+              with:
+                  fetch-depth: 0
+
+            - name: Sanitize branch name
+              if: (github.event.action == 'opened' || github.event.action == 'labeled') && github.event.issue.state == 'open'
+              id: sanitize
+              uses: ./.github/actions/sanitize-branch-name
+              with:
+                  issue-number: ${{ github.event.issue.number }}
+                  issue-title: ${{ github.event.issue.title }}
+                  prefix: "bug"
+
+            - name: Create bug fix branch
+              if: (github.event.action == 'opened' || github.event.action == 'labeled') && github.event.issue.state == 'open'
+              id: create-branch
+              run: |
+                  BRANCH_NAME="${{ steps.sanitize.outputs.branch-name }}"
+                  echo "Checking if branch exists: $BRANCH_NAME"
+
+                  # Fetch latest remote state to avoid race conditions
+                  git fetch origin --quiet
+
+                  # Check if branch already exists
+                  if git ls-remote --heads origin "$BRANCH_NAME" | grep -q "$BRANCH_NAME"; then
+                    echo "Branch $BRANCH_NAME already exists, skipping creation"
+                    echo "BRANCH_EXISTS=true" >> $GITHUB_ENV
+                    echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
+                    exit 0
+                  fi
+
+                  echo "Creating branch: $BRANCH_NAME"
+
+                  # Create and push branch from main
+                  git config user.name "github-actions[bot]"
+                  git config user.email "github-actions[bot]@users.noreply.github.com"
+                  git checkout -b "$BRANCH_NAME"
+
+                  # Create initial commit to allow PR creation
+                  git commit --allow-empty -m "Initial commit"
+
+                  # Try to push, handling race condition where another workflow run may have created the branch
+                  if git push origin "$BRANCH_NAME"; then
+                    echo "Branch created successfully"
+                    echo "BRANCH_EXISTS=false" >> $GITHUB_ENV
+                  else
+                    # Check if branch was created by another workflow run
+                    git fetch origin --quiet
+                    if git ls-remote --heads origin "$BRANCH_NAME" | grep -q "$BRANCH_NAME"; then
+                      echo "Branch $BRANCH_NAME was created by another workflow run, continuing"
+                      # Synchronize local branch with remote to avoid conflicts
+                      git reset --hard origin/$BRANCH_NAME
+                      echo "BRANCH_EXISTS=true" >> $GITHUB_ENV
+                    else
+                      echo "Failed to create branch for unknown reason"
+                      exit 1
+                    fi
+                  fi
+
+                  # Export for subsequent steps
+                  echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
+
+            - name: Create pull request
+              if: (github.event.action == 'opened' || github.event.action == 'labeled') && github.event.issue.state == 'open' && env.BRANCH_EXISTS == 'false'
+              id: create-pr
+              uses: actions/github-script@v7
+              with:
+                  script: |
+                      const branchName = process.env.BRANCH_NAME;
+
+                      try {
+                        // Check if PR already exists for this branch
+                        const { data: existingPRs } = await github.rest.pulls.list({
+                          owner: context.repo.owner,
+                          repo: context.repo.repo,
+                          head: `${context.repo.owner}:${branchName}`,
+                          state: 'all'
+                        });
+
+                        if (existingPRs.length > 0) {
+                          console.log(`Pull request already exists for branch ${branchName}: #${existingPRs[0].number}`);
+                          return existingPRs[0].number;
+                        }
+
+                        // Create pull request
+                        const pr = await github.rest.pulls.create({
+                          owner: context.repo.owner,
+                          repo: context.repo.repo,
+                          title: `Fixing ${context.payload.issue.title}`,
+                          head: branchName,
+                          base: 'main',
+                          body: `Closes #${context.issue.number}\n\n${context.payload.issue.body || 'No description provided.'}\n\n---\n\n🤖 This pull request was automatically created from issue #${context.issue.number}.`,
+                          draft: true
+                        });
+
+                        console.log(`Pull request #${pr.data.number} created`);
+
+                        // Return PR number for next step
+                        return pr.data.number;
+                      } catch (error) {
+                        console.error('Error creating pull request:', error.message);
+                        // Return null to indicate failure
+                        return null;
+                      }
+
+            - name: Comment on issue with branch and PR info
+              if: (github.event.action == 'opened' || github.event.action == 'labeled') && github.event.issue.state == 'open' && steps.create-pr.outputs.result != 'null'
+              uses: actions/github-script@v7
+              with:
+                  script: |
+                      const branchName = process.env.BRANCH_NAME;
+                      const prNumber = ${{ steps.create-pr.outputs.result }};
+
+                      if (!prNumber) {
+                        console.log('PR number not available, skipping comment');
+                        return;
+                      }
+
+                      // Pre-generated empathetic responses
+                      const responses = [
+                        "So sorry to hear that you're experiencing this issue. Thank you for bringing it to our attention. We are working our best to fix this problem as quickly as possible.",
+                        "We sincerely apologize for the inconvenience this issue has caused. Thank you for reporting it! Our team is committed to resolving this as soon as we can.",
+                        "Thank you so much for taking the time to report this bug. We're sorry you've encountered this issue and we're prioritizing a fix for it.",
+                        "We appreciate you bringing this to our attention, and we're sorry you're experiencing this problem. Rest assured, we're working diligently to get this resolved for you."
+                      ];
+
+                      // Randomly select one of the 4 responses
+                      const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+
+                      await github.rest.issues.createComment({
+                        issue_number: context.issue.number,
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        body: `${randomResponse}\n\n🐛 Branch \`${branchName}\` has been created for this bug report.\n\n📝 Pull Request #${prNumber} has been created as a draft.\n\nYou can start working on the fix with:\n\`\`\`bash\ngit fetch origin\ngit checkout ${branchName}\n\`\`\`\n\nOnce ready, mark the PR as ready for review!\n\n<!-- branch-name: ${branchName} -->`
+                      });
+
+            - name: Assign issue
+              if: (github.event.action == 'opened' || github.event.action == 'labeled') && github.event.issue.state == 'open'
+              uses: actions/github-script@v7
+              with:
+                  script: |
+                      await github.rest.issues.addAssignees({
+                        issue_number: context.issue.number,
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        assignees: ['Jovian-Aurrigo']
+                      });
+
+            - name: Add to AutoConnect project
+              if: (github.event.action == 'opened' || github.event.action == 'labeled') && github.event.issue.state == 'open'
+              uses: actions/github-script@v7
+              with:
+                  script: |
+                      try {
+                        // Use Projects V2 GraphQL API
+                        const org = context.repo.owner;
+                        const repo = context.repo.repo;
+                        const issueNodeId = context.payload.issue.node_id;
+                        
+                        console.log(`Looking for AutoConnect project for issue node_id: ${issueNodeId}`);
+                        
+                        // Query for organization-level projects V2
+                        let autoConnectProject;
+                        try {
+                          const orgProjects = await github.graphql(`
+                            query($org: String!) {
+                              organization(login: $org) {
+                                projectsV2(first: 20) {
+                                  nodes {
+                                    id
+                                    title
+                                  }
+                                }
+                              }
+                            }
+                          `, { org });
+                          
+                          autoConnectProject = orgProjects.organization.projectsV2.nodes.find(
+                            p => p.title === 'AutoConnect'
+                          );
+                          
+                          if (autoConnectProject) {
+                            console.log('Found AutoConnect project in organization');
+                          }
+                        } catch (error) {
+                          console.log('Could not query organization projects:', error.message);
+                        }
+                        
+                        // If not found, try repository-level projects V2
+                        if (!autoConnectProject) {
+                          console.log('Trying repository-level projects...');
+                          const repoProjects = await github.graphql(`
+                            query($owner: String!, $repo: String!) {
+                              repository(owner: $owner, name: $repo) {
+                                projectsV2(first: 20) {
+                                  nodes {
+                                    id
+                                    title
+                                  }
+                                }
+                              }
+                            }
+                          `, { owner: org, repo });
+                          
+                          autoConnectProject = repoProjects.repository.projectsV2.nodes.find(
+                            p => p.title === 'AutoConnect'
+                          );
+                          
+                          if (autoConnectProject) {
+                            console.log('Found AutoConnect project in repository');
+                          }
+                        }
+                        
+                        if (!autoConnectProject) {
+                          console.log('AutoConnect project not found in Projects V2 (org or repo)');
+                          return;
+                        }
+                        
+                        // Add the issue to the project
+                        const addItemResult = await github.graphql(`
+                          mutation($projectId: ID!, $contentId: ID!) {
+                            addProjectV2ItemById(input: {projectId: $projectId, contentId: $contentId}) {
+                              item {
+                                id
+                              }
+                            }
+                          }
+                        `, {
+                          projectId: autoConnectProject.id,
+                          contentId: issueNodeId
+                        });
+                        
+                        if (addItemResult.addProjectV2ItemById?.item) {
+                          console.log('Successfully added issue to AutoConnect project (Projects V2)');
+                        } else {
+                          console.log('Failed to add issue to AutoConnect project (Projects V2)');
+                        }
+                      } catch (error) {
+                        console.log('Error adding to project:', error.message);
+                        // Don't fail the workflow if project assignment fails
+                      }
+
+            - name: Comment on issue close
+              if: github.event.action == 'closed'
+              uses: actions/github-script@v7
+              with:
+                  script: |
+                      try {
+                        // Retrieve sanitized branch name from issue comments
+                        const issueNumber = context.issue.number;
+                        const comments = await github.rest.issues.listComments({
+                          owner: context.repo.owner,
+                          repo: context.repo.repo,
+                          issue_number: issueNumber
+                        });
+                        
+                        // Look for comment containing branch name marker
+                        let branchName = null;
+                        for (const comment of comments.data) {
+                          const match = comment.body.match(/<!-- branch-name:\s*([^\s]+)\s*-->/);
+                          if (match) {
+                            branchName = match[1];
+                            break;
+                          }
+                        }
+                        
+                        if (!branchName) {
+                          console.log('Sanitized branch name not found in issue comments. This issue may not have been created by automation.');
+                          return;
+                        }
+                        
+                        console.log(`Issue closed. Branch ${branchName} can be manually deleted if no longer needed.`);
+                        
+                        // Check if branch still exists
+                        let branchExists = false;
+                        try {
+                          await github.rest.repos.getBranch({
+                            owner: context.repo.owner,
+                            repo: context.repo.repo,
+                            branch: branchName
+                          });
+                          branchExists = true;
+                        } catch (error) {
+                          if (error.status === 404) {
+                            console.log(`Branch ${branchName} does not exist or was already deleted`);
+                            return;
+                          } else {
+                            throw error;
+                          }
+                        }
+                        
+                        if (branchExists) {
+                          // Inform maintainers that the branch can be deleted manually
+                          await github.rest.issues.createComment({
+                            issue_number: context.issue.number,
+                            owner: context.repo.owner,
+                            repo: context.repo.repo,
+                            body: `ℹ️ This issue has been closed. Branch \`${branchName}\` is still available.\n\nIf you're finished with this branch, you can delete it manually with:\n\`\`\`bash\ngit push origin --delete ${branchName}\n\`\`\``
+                          });
+                        }
+                      } catch (error) {
+                        console.log('Error processing branch notification:', error.message);
+                        // Don't fail the workflow if notification fails
+                      }

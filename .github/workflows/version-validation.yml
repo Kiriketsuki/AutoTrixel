@@ -1,0 +1,95 @@
+name: Version Validation
+
+on:
+    pull_request:
+        branches:
+            - main
+            - release
+        types: [opened, synchronize, reopened]
+
+jobs:
+    validate-version:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v5
+              with:
+                  fetch-depth: 0
+
+            - name: Get latest tag
+              id: get_tag
+              run: |
+                  # Get the latest tag
+                  LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+                  echo "latest_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
+                  echo "Latest tag: $LATEST_TAG"
+
+            - name: Check if version file exists
+              id: check_version
+              run: |
+                  if [ -f VERSION ]; then
+                    NEW_VERSION=$(cat VERSION)
+                    echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+                    echo "Version file exists with version: $NEW_VERSION"
+                  else
+                    echo "No VERSION file found. Please create one with the new version."
+                    exit 1
+                  fi
+
+            - name: Validate semantic versioning
+              run: |
+                  VERSION=${{ steps.check_version.outputs.new_version }}
+                  # Validate calendar-based version format: YY.MM.minor.patch
+                  if ! echo "$VERSION" | grep -qE '^[0-9]{2}\.[0-9]{2}\.[0-9]+\.[0-9]+$'; then
+                    echo "Error: Version $VERSION does not follow calendar-based versioning (YY.MM.minor.patch)"
+                    echo "Example: 25.11.0.0 (November 2025, 0 features, 0 patches)"
+                    exit 1
+                  fi
+
+                  # Extract and validate year/month
+                  YY=$(echo "$VERSION" | cut -d. -f1)
+                  MM=$(echo "$VERSION" | cut -d. -f2)
+                  CURRENT_YY=$(date +%y)
+                  CURRENT_MM=$(date +%m)
+
+                  # Ensure YY matches current year
+                  if [ "$YY" != "$CURRENT_YY" ]; then
+                    echo "⚠️  Warning: Version year ($YY) doesn't match current year ($CURRENT_YY)"
+                  fi
+
+                  # Validate month is 01-12
+                  if [ "$MM" -lt 1 ] || [ "$MM" -gt 12 ]; then
+                    echo "Error: Month must be between 01 and 12, got $MM"
+                    exit 1
+                  fi
+
+                  echo "✓ Version $VERSION is valid calendar-based version"
+
+            - name: Compare with latest tag (PRs to release only)
+              if: github.base_ref == 'release'
+              run: |
+                  LATEST_TAG="${{ steps.get_tag.outputs.latest_tag }}"
+                  NEW_VERSION="${{ steps.check_version.outputs.new_version }}"
+
+                  # Remove 'v' prefix from tag if present
+                  LATEST_VERSION="${LATEST_TAG#v}"
+
+                  echo "Latest released version: $LATEST_VERSION"
+                  echo "New version: $NEW_VERSION"
+
+                  # Simple version comparison (assumes valid SemVer)
+                  if [ "$NEW_VERSION" = "$LATEST_VERSION" ]; then
+                    echo "Error: New version $NEW_VERSION is the same as latest tag $LATEST_TAG"
+                    exit 1
+                  fi
+
+                  echo "✓ Version validation passed"
+
+            - name: Summary
+              run: |
+                  echo "## Version Validation Summary" >> $GITHUB_STEP_SUMMARY
+                  echo "" >> $GITHUB_STEP_SUMMARY
+                  echo "- **Target Branch**: ${{ github.base_ref }}" >> $GITHUB_STEP_SUMMARY
+                  echo "- **Version**: ${{ steps.check_version.outputs.new_version }}" >> $GITHUB_STEP_SUMMARY
+                  echo "- **Latest Tag**: ${{ steps.get_tag.outputs.latest_tag }}" >> $GITHUB_STEP_SUMMARY
+                  echo "- **Status**: ✓ Valid" >> $GITHUB_STEP_SUMMARY

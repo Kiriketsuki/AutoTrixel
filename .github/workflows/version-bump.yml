@@ -1,0 +1,132 @@
+name: Automatic Version Bump
+
+on:
+    pull_request:
+        branches:
+            - main
+        types: [closed]
+
+jobs:
+    bump-version:
+        if: github.event.pull_request.merged == true
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v5
+              with:
+                  ref: main
+                  fetch-depth: 0
+
+            - name: Determine version bump type
+              id: bump_type
+              run: |
+                  BRANCH_NAME="${{ github.head_ref }}"
+                  echo "Branch name: $BRANCH_NAME"
+
+                  if [[ $BRANCH_NAME == feature/* ]]; then
+                    echo "bump_type=minor" >> $GITHUB_OUTPUT
+                    echo "Detected feature branch - will bump MINOR version"
+                  elif [[ $BRANCH_NAME == bug/* || $BRANCH_NAME == hotfix/* ]]; then
+                    echo "bump_type=patch" >> $GITHUB_OUTPUT
+                    echo "Detected bug or hotfix branch - will bump PATCH version"
+                  else
+                    echo "bump_type=none" >> $GITHUB_OUTPUT
+                    echo "Not a feature or bug branch - no automatic version bump"
+                  fi
+
+            - name: Read current version
+              id: current_version
+              if: steps.bump_type.outputs.bump_type != 'none'
+              run: |
+                  if [ -f VERSION ]; then
+                    CURRENT_VERSION=$(cat VERSION)
+                    echo "current=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+                    echo "Current version: $CURRENT_VERSION"
+                  else
+                    echo "No VERSION file found"
+                    exit 1
+                  fi
+
+            - name: Calculate new version
+              id: new_version
+              if: steps.bump_type.outputs.bump_type != 'none'
+              run: |
+                  CURRENT="${{ steps.current_version.outputs.current }}"
+                  BUMP_TYPE="${{ steps.bump_type.outputs.bump_type }}"
+
+                  # Parse calendar-based version: YY.MM.minor.patch
+                  if [[ $CURRENT =~ ^([0-9]{2})\.([0-9]{2})\.([0-9]+)\.([0-9]+)$ ]]; then
+                    YY="${BASH_REMATCH[1]}"
+                    MM="${BASH_REMATCH[2]}"
+                    MINOR="${BASH_REMATCH[3]}"
+                    PATCH="${BASH_REMATCH[4]}"
+                    
+                    # Get current year and month
+                    CURRENT_YY=$(date +%y)
+                    CURRENT_MM=$(date +%m)
+                    
+                    # Check if we've moved to a new year
+                    if [ "$YY" != "$CURRENT_YY" ]; then
+                      echo "⚠️  Version year ($YY) doesn't match current year ($CURRENT_YY)"
+                      echo "Please manually update VERSION file to $CURRENT_YY.$CURRENT_MM.0.0 for new year"
+                      exit 1
+                    fi
+                    
+                    # Check if we've moved to a new month
+                    if [ "$MM" != "$CURRENT_MM" ]; then
+                      echo "⚠️  Version month ($MM) doesn't match current month ($CURRENT_MM)"
+                      echo "Please manually update VERSION file to $CURRENT_YY.$CURRENT_MM.$MINOR.$PATCH for new month"
+                      exit 1
+                    fi
+                    
+                    # Bump version based on type
+                    if [ "$BUMP_TYPE" = "minor" ]; then
+                      # Feature: increment minor, reset patch
+                      MINOR=$((MINOR + 1))
+                      PATCH=0
+                    elif [ "$BUMP_TYPE" = "patch" ]; then
+                      # Bug: increment patch
+                      PATCH=$((PATCH + 1))
+                    fi
+                    
+                    NEW_VERSION="$YY.$MM.$MINOR.$PATCH"
+                    echo "new=$NEW_VERSION" >> $GITHUB_OUTPUT
+                    echo "New version: $NEW_VERSION"
+                  else
+                    echo "Error: Invalid version format: $CURRENT"
+                    echo "Expected format: YY.MM.minor.patch (e.g., 25.11.0.0)"
+                    exit 1
+                  fi
+
+            - name: Update VERSION file
+              if: steps.bump_type.outputs.bump_type != 'none'
+              run: |
+                  NEW_VERSION="${{ steps.new_version.outputs.new }}"
+                  echo "$NEW_VERSION" > VERSION
+                  echo "Updated VERSION file to $NEW_VERSION"
+
+            - name: Commit version bump
+              if: steps.bump_type.outputs.bump_type != 'none'
+              run: |
+                  NEW_VERSION="${{ steps.new_version.outputs.new }}"
+                  BUMP_TYPE="${{ steps.bump_type.outputs.bump_type }}"
+
+                  git config user.name "github-actions[bot]"
+                  git config user.email "github-actions[bot]@users.noreply.github.com"
+                  git add VERSION
+                  git commit -m "chore: bump version to $NEW_VERSION [skip ci]
+
+                  Automatic $BUMP_TYPE version bump after merging ${{ github.head_ref }}"
+                  git push origin main
+
+            - name: Summary
+              if: steps.bump_type.outputs.bump_type != 'none'
+              run: |
+                  echo "## Version Bump Summary" >> $GITHUB_STEP_SUMMARY
+                  echo "" >> $GITHUB_STEP_SUMMARY
+                  echo "- **Branch**: ${{ github.head_ref }}" >> $GITHUB_STEP_SUMMARY
+                  echo "- **Bump Type**: ${{ steps.bump_type.outputs.bump_type }}" >> $GITHUB_STEP_SUMMARY
+                  echo "- **Previous Version**: ${{ steps.current_version.outputs.current }}" >> $GITHUB_STEP_SUMMARY
+                  echo "- **New Version**: ${{ steps.new_version.outputs.new }}" >> $GITHUB_STEP_SUMMARY

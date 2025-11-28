@@ -1,0 +1,91 @@
+name: Release Management
+
+on:
+    pull_request:
+        branches:
+            - release
+        types: [closed]
+    push:
+        branches:
+            - release
+
+jobs:
+    create-release:
+        if: |
+            (github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'release') ||
+            (github.event_name == 'push' && github.ref == 'refs/heads/release')
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v5
+
+            - name: Get version from VERSION file
+              id: get_version
+              run: |
+                  if [ -f VERSION ]; then
+                    VERSION=$(cat VERSION)
+                    echo "version=$VERSION" >> $GITHUB_OUTPUT
+                    echo "Creating release for version: $VERSION"
+                    
+                    # Parse calendar version for release notes
+                    if [[ $VERSION =~ ^([0-9]{2})\.([0-9]{2})\.([0-9]+)\.([0-9]+)$ ]]; then
+                      YY="${BASH_REMATCH[1]}"
+                      MM="${BASH_REMATCH[2]}"
+                      MINOR="${BASH_REMATCH[3]}"
+                      PATCH="${BASH_REMATCH[4]}"
+                      
+                      # Convert month number to name
+                      case $MM in
+                        01) MONTH_NAME="January" ;;
+                        02) MONTH_NAME="February" ;;
+                        03) MONTH_NAME="March" ;;
+                        04) MONTH_NAME="April" ;;
+                        05) MONTH_NAME="May" ;;
+                        06) MONTH_NAME="June" ;;
+                        07) MONTH_NAME="July" ;;
+                        08) MONTH_NAME="August" ;;
+                        09) MONTH_NAME="September" ;;
+                        10) MONTH_NAME="October" ;;
+                        11) MONTH_NAME="November" ;;
+                        12) MONTH_NAME="December" ;;
+                      esac
+                      
+                      echo "month_name=$MONTH_NAME" >> $GITHUB_OUTPUT
+                      echo "year=20$YY" >> $GITHUB_OUTPUT
+                      echo "feature_count=$MINOR" >> $GITHUB_OUTPUT
+                      echo "bugfix_count=$PATCH" >> $GITHUB_OUTPUT
+                    fi
+                  else
+                    echo "No VERSION file found"
+                    exit 1
+                  fi
+
+            - name: Create Git tag
+              run: |
+                  VERSION=${{ steps.get_version.outputs.version }}
+                  git config user.name "github-actions[bot]"
+                  git config user.email "github-actions[bot]@users.noreply.github.com"
+                  git tag -a "v$VERSION" -m "Release version $VERSION"
+                  git push origin "v$VERSION"
+
+            - name: Create GitHub Release
+              uses: softprops/action-gh-release@v1
+              with:
+                  tag_name: v${{ steps.get_version.outputs.version }}
+                  name: Release ${{ steps.get_version.outputs.month_name }} ${{ steps.get_version.outputs.year }} (v${{ steps.get_version.outputs.version }})
+                  body: |
+                      ## Release ${{ steps.get_version.outputs.month_name }} ${{ steps.get_version.outputs.year }}
+
+                      **Version**: `${{ steps.get_version.outputs.version }}`
+                      **Release Date**: ${{ steps.get_version.outputs.month_name }} ${{ steps.get_version.outputs.year }}
+
+                      ### Statistics
+                      - 🚀 **Features**: ${{ steps.get_version.outputs.feature_count }} new features this year
+                      - 🐛 **Bug Fixes**: ${{ steps.get_version.outputs.bugfix_count }} fixes this month
+
+                      ### Changes
+                      ${{ github.event.pull_request.body }}
+                  draft: false
+                  prerelease: false

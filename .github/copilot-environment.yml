@@ -1,0 +1,10 @@
+# GitHub Copilot Coding Agent Environment Configuration
+# This file customizes the development environment for the Copilot coding agent
+# Documentation: https://docs.github.com/en/copilot/how-tos/use-copilot-agents/coding-agent/customize-the-agent-environment
+
+# Use Ubuntu 20.04 runner as requested
+runs-on: ubuntu-20.04
+
+# Environment variables (if needed in the future)
+# env:
+#   DATABASE_URL: "mysql://user:pass@localhost:3306/autoconnect"
