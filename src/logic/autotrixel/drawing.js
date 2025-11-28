@@ -80,7 +80,7 @@ export function fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_hal
     });
 
     if (config.showGrid) {
-        drawGridLines(artCtx, artCanvas, config, triHeight, W_half);
+        drawGridLines(artCtx, artCanvas, config, triHeight, W_half, gridData);
     }
 }
 
@@ -118,33 +118,135 @@ export function drawCursor(cursorCtx, cursorCanvas, hoveredCells, currentTool, t
     cursorCtx.shadowBlur = 0;
 }
 
-export function drawGridLines(ctx, canvas, config, triHeight, W_half) {
+export function drawGridLines(ctx, canvas, config, triHeight, W_half, gridData) {
     if (config.widthTriangles * config.heightTriangles > 400000) return;
 
-    ctx.strokeStyle = config.gridColor;
-    ctx.lineWidth = 0.5;
-    ctx.beginPath();
+    const setStyle = (style, thickness) => {
+        ctx.lineWidth = thickness;
+        if (style === "dashed") {
+            ctx.setLineDash([thickness * 4, thickness * 4]);
+        } else if (style === "dotted") {
+            ctx.setLineDash([thickness, thickness * 2]);
+        } else {
+            ctx.setLineDash([]);
+        }
+    };
 
-    for (let r = 0; r <= config.heightTriangles; r++) {
-        ctx.moveTo(0, r * triHeight);
-        ctx.lineTo(canvas.width, r * triHeight);
+    const isSubdivided = (r, c) => {
+        if (!config.showSubGrid || !gridData) return false;
+        const key = `${r},${c}`;
+        return gridData[key] && gridData[key].subdivided;
+    };
+
+    // 1. Draw Sub Grid (First, so it's "under" the main grid, but we will skip main grid lines over it)
+    if (config.showSubGrid && gridData) {
+        ctx.save();
+        ctx.strokeStyle = config.subGridColor;
+        ctx.globalAlpha = config.subGridOpacity;
+        setStyle(config.subGridStyle, config.subGridThickness);
+
+        ctx.beginPath();
+
+        Object.keys(gridData).forEach((key) => {
+            const cell = gridData[key];
+            if (cell && cell.subdivided) {
+                const [r, c] = key.split(",").map(Number);
+                const vertices = getTriangleVertices(r, c, triHeight, W_half);
+                const [v0, v1, v2] = vertices;
+
+                const m01 = { x: (v0.x + v1.x) / 2, y: (v0.y + v1.y) / 2 };
+                const m12 = { x: (v1.x + v2.x) / 2, y: (v1.y + v2.y) / 2 };
+                const m20 = { x: (v2.x + v0.x) / 2, y: (v2.y + v0.y) / 2 };
+
+                // Draw the inner triangle connecting midpoints
+                ctx.moveTo(m01.x, m01.y);
+                ctx.lineTo(m12.x, m12.y);
+                ctx.lineTo(m20.x, m20.y);
+                ctx.closePath();
+
+                // Draw the outer triangle (borders) to ensure full coverage
+                ctx.moveTo(v0.x, v0.y);
+                ctx.lineTo(v1.x, v1.y);
+                ctx.lineTo(v2.x, v2.y);
+                ctx.closePath();
+            }
+        });
+
+        ctx.stroke();
+        ctx.restore();
     }
 
+    // 2. Draw Main Grid
+    ctx.save();
+    ctx.strokeStyle = config.gridColor;
+    ctx.globalAlpha = config.gridOpacity;
+    setStyle(config.gridStyle, config.gridThickness);
+
+    ctx.beginPath();
+
+    // Draw edges cell by cell, skipping if subdivided
     for (let r = 0; r < config.heightTriangles; r++) {
         for (let c = 0; c < config.widthTriangles; c++) {
             const xBase = c * W_half;
             const yBase = r * triHeight;
             const isUp = r % 2 === Math.abs(c) % 2;
+            const currentSubdivided = isSubdivided(r, c);
+
             if (isUp) {
-                ctx.moveTo(xBase, yBase + triHeight);
-                ctx.lineTo(xBase + W_half, yBase);
-                ctx.lineTo(xBase + 2 * W_half, yBase + triHeight);
+                // Up Triangle: Vertices (x, y+h), (x+w, y), (x+2w, y+h)
+                // Left Edge: (x, y+h) -> (x+w, y). Neighbor: (r, c-1) (Down)
+                if (!currentSubdivided && !isSubdivided(r, c - 1)) {
+                    ctx.moveTo(xBase, yBase + triHeight);
+                    ctx.lineTo(xBase + W_half, yBase);
+                }
+                // Right Edge: (x+w, y) -> (x+2w, y+h). Neighbor: (r, c+1) (Down)
+                if (!currentSubdivided && !isSubdivided(r, c + 1)) {
+                    ctx.lineTo(xBase + 2 * W_half, yBase + triHeight);
+                } else {
+                    // If we skipped right edge, we must move to the end point to continue path?
+                    // No, moveTo starts a new sub-path. lineTo continues.
+                    // If we skip lineTo, we just don't draw.
+                    // But if we drew Left Edge, current point is (x+w, y).
+                    // If we skip Right Edge, we stop there.
+                    // Next iteration starts with moveTo. So it's fine.
+                    // But wait, if we skipped Left Edge, we didn't moveTo.
+                    // So if we try to draw Right Edge, we need a moveTo first.
+                    if (!currentSubdivided && !isSubdivided(r, c + 1)) {
+                        ctx.moveTo(xBase + W_half, yBase);
+                        ctx.lineTo(xBase + 2 * W_half, yBase + triHeight);
+                    }
+                }
+
+                // Bottom Edge (Horizontal): (x, y+h) -> (x+2w, y+h). Neighbor: (r+1, c) (Down)
+                if (!currentSubdivided && !isSubdivided(r + 1, c)) {
+                    ctx.moveTo(xBase, yBase + triHeight);
+                    ctx.lineTo(xBase + 2 * W_half, yBase + triHeight);
+                }
             } else {
-                ctx.moveTo(xBase, yBase);
-                ctx.lineTo(xBase + W_half, yBase + triHeight);
-                ctx.lineTo(xBase + 2 * W_half, yBase);
+                // Down Triangle: Vertices (x, y), (x+w, y+h), (x+2w, y)
+                // Left Edge: (x, y) -> (x+w, y+h). Neighbor: (r, c-1) (Up)
+                if (!currentSubdivided && !isSubdivided(r, c - 1)) {
+                    ctx.moveTo(xBase, yBase);
+                    ctx.lineTo(xBase + W_half, yBase + triHeight);
+                }
+                // Right Edge: (x+w, y+h) -> (x+2w, y). Neighbor: (r, c+1) (Up)
+                if (!currentSubdivided && !isSubdivided(r, c + 1)) {
+                    // Ensure we are at start point
+                    ctx.moveTo(xBase + W_half, yBase + triHeight);
+                    ctx.lineTo(xBase + 2 * W_half, yBase);
+                }
+
+                // Top Edge (Horizontal): (x, y) -> (x+2w, y). Neighbor: (r-1, c) (Up)
+                // Only draw if r === 0 to avoid double drawing horizontal lines (others handled by Up triangles below)
+                if (r === 0) {
+                    if (!currentSubdivided && !isSubdivided(r - 1, c)) {
+                        ctx.moveTo(xBase, yBase);
+                        ctx.lineTo(xBase + 2 * W_half, yBase);
+                    }
+                }
             }
         }
     }
     ctx.stroke();
+    ctx.restore();
 }
