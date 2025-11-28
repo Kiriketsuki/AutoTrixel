@@ -72,7 +72,7 @@
         id="sidebar"
         class="w-[max(320px,20vw)] min-w-[max(320px,20vw)] bg-black-dark--1 border-r border-black-light flex flex-col p-[15px] gap-2 shadow-lg z-20 overflow-y-auto transition-[margin] duration-300 ease-in-out touch-pan-y"
         :class="{ '-ml-[calc(max(320px,20vw)+1px)]': !isOpen }">
-        <h1>
+        <h1 class="text-2xl text-primary uppercase tracking-widest flex items-center gap-2.5 m-0">
             <svg
                 width="24"
                 height="24"
@@ -84,14 +84,14 @@
             <VersionBadge />
         </h1>
 
-        <div class="tutorial-box">
-            <h3>Shortcuts</h3>
-            <div class="key-row"><span>Undo</span> <span class="kbd">Ctrl + Z</span></div>
-            <div class="key-row"><span>Zoom In/Out</span> <span class="kbd">Ctrl + + / -</span></div>
-            <div class="key-row"><span>Brush Size</span> <span class="kbd">Ctrl + [ / ]</span></div>
-            <div class="key-row"><span>Scroll/Zoom</span> <span class="kbd">Ctrl + Wheel</span></div>
-            <div class="key-row"><span>BG Scale</span> <span class="kbd">Ctrl + Shift + Wheel</span></div>
-            <div class="key-row"><span>BG Pan</span> <span class="kbd">Ctrl + Shift + Mid Drag</span></div>
+        <div class="bg-black/20 border border-black-light rounded-md p-2.5 text-xs text-white">
+            <h3 class="m-0 mb-1.5 text-primary text-sm">Shortcuts</h3>
+            <div class="flex justify-between mb-1 border-b border-black-light pb-0.5 last:border-none last:m-0"><span>Undo</span> <span class="bg-black px-1 py-0.5 rounded font-mono border border-black-light text-white-dark">Ctrl + Z</span></div>
+            <div class="flex justify-between mb-1 border-b border-black-light pb-0.5 last:border-none last:m-0"><span>Zoom In/Out</span> <span class="bg-black px-1 py-0.5 rounded font-mono border border-black-light text-white-dark">Ctrl + + / -</span></div>
+            <div class="flex justify-between mb-1 border-b border-black-light pb-0.5 last:border-none last:m-0"><span>Brush Size</span> <span class="bg-black px-1 py-0.5 rounded font-mono border border-black-light text-white-dark">Ctrl + [ / ]</span></div>
+            <div class="flex justify-between mb-1 border-b border-black-light pb-0.5 last:border-none last:m-0"><span>Scroll/Zoom</span> <span class="bg-black px-1 py-0.5 rounded font-mono border border-black-light text-white-dark">Ctrl + Wheel</span></div>
+            <div class="flex justify-between mb-1 border-b border-black-light pb-0.5 last:border-none last:m-0"><span>BG Scale</span> <span class="bg-black px-1 py-0.5 rounded font-mono border border-black-light text-white-dark">Ctrl + Shift + Wheel</span></div>
+            <div class="flex justify-between mb-1 border-b border-black-light pb-0.5 last:border-none last:m-0"><span>BG Pan</span> <span class="bg-black px-1 py-0.5 rounded font-mono border border-black-light text-white-dark">Ctrl + Shift + Mid Drag</span></div>
         </div>
 
         <ToolsControl :autoTrixelInstance="autoTrixelInstance" />
@@ -109,21 +109,18 @@
 
         <div style="margin-top: auto">
             <button
-                class="action-btn"
-                style="width: 100%"
+                class="bg-black text-white-dark border border-black-light p-2.5 rounded-md cursor-pointer font-semibold transition-colors duration-200 mt-1.5 hover:bg-tertiary-dark-1 hover:border-tertiary hover:text-white w-full"
                 @click="resetCanvas">
                 Clear Canvas
             </button>
-            <div class="btn-group">
+            <div class="flex gap-2">
                 <button
-                    class="action-btn primary"
-                    style="flex: 1"
+                    class="bg-primary text-white border-none hover:bg-primary-light p-2.5 rounded-md cursor-pointer font-semibold transition-colors duration-200 mt-1.5 flex-1"
                     @click="exportImage">
                     PNG
                 </button>
                 <button
-                    class="action-btn primary"
-                    style="flex: 1"
+                    class="bg-primary text-white border-none hover:bg-primary-light p-2.5 rounded-md cursor-pointer font-semibold transition-colors duration-200 mt-1.5 flex-1"
                     @click="exportSVG">
                     SVG
                 </button>

@@ -21,73 +21,21 @@
 </script>
 
 <template>
-    <div class="control-section">
+    <div class="bg-black border border-black-light rounded-md mb-2 overflow-hidden transition-all duration-200 shrink-0 hover:border-primary">
         <div
-            class="section-header"
+            class="p-2.5 cursor-pointer flex justify-between items-center bg-black-light select-none border-b border-black-light"
             @click="toggle">
-            <span class="section-title">{{ title }}</span>
+            <span class="text-xs font-semibold text-white uppercase tracking-wide">{{ title }}</span>
             <span
-                class="toggle-icon"
-                :class="{ collapsed: isCollapsed }">
+                class="text-[0.7rem] text-white-dark transition-transform duration-200"
+                :class="{ '-rotate-90': isCollapsed }">
                 ▼
             </span>
         </div>
         <TransitionExpand :expanded="!isCollapsed">
-            <div class="section-content">
+            <div class="p-2.5 flex flex-col gap-2">
                 <slot></slot>
             </div>
         </TransitionExpand>
     </div>
 </template>
-
-<style scoped>
-    .control-section {
-        background-color: var(--color-black);
-        border: 1px solid var(--border);
-        border-radius: 6px;
-        margin-bottom: 8px;
-        overflow: hidden;
-        transition: all 0.2s ease;
-        flex-shrink: 0; /* Prevent shrinking in flex container */
-    }
-
-    .control-section:hover {
-        border-color: var(--accent);
-    }
-
-    .section-header {
-        padding: 8px 10px;
-        cursor: pointer;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        background-color: var(--color-black-light);
-        user-select: none;
-        border-bottom: 1px solid var(--border);
-    }
-
-    .section-title {
-        font-size: 0.8rem;
-        font-weight: 600;
-        color: var(--color-white);
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-
-    .toggle-icon {
-        font-size: 0.7rem;
-        color: var(--color-white-dark);
-        transition: transform 0.2s;
-    }
-
-    .toggle-icon.collapsed {
-        transform: rotate(-90deg);
-    }
-
-    .section-content {
-        padding: 10px;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-    }
-</style>

@@ -79,63 +79,69 @@
 
 <template>
     <ControlSection title="Grid Settings">
-        <div class="control-group">
-            <label>Triangle Scale (px)</label>
-            <div class="input-row">
+        <div class="flex flex-col gap-2">
+            <label class="text-xs text-white-dark font-semibold flex justify-between items-center">Triangle Scale (px)</label>
+            <div class="flex gap-2.5 items-center">
                 <input
                     type="range"
                     id="scaleSlider"
                     min="5"
                     max="200"
-                    value="25" />
+                    value="25"
+                    class="flex-1 h-1 accent-primary hover:accent-tertiary transition-colors duration-200 w-full" />
                 <input
                     type="number"
                     id="scaleNumber"
                     min="5"
                     max="200"
-                    value="25" />
+                    value="25"
+                    class="w-[60px] bg-black border border-black-light text-primary p-1 rounded font-inherit text-sm text-right focus:outline-none focus:border-primary" />
             </div>
         </div>
 
-        <div class="control-group">
-            <label>Grid Width</label>
-            <div class="input-row">
+        <div class="flex flex-col gap-2">
+            <label class="text-xs text-white-dark font-semibold flex justify-between items-center">Grid Width</label>
+            <div class="flex gap-2.5 items-center">
                 <input
                     type="range"
                     id="widthSlider"
                     min="5"
                     max="500"
-                    value="40" />
+                    value="40"
+                    class="flex-1 h-1 accent-primary hover:accent-tertiary transition-colors duration-200 w-full" />
                 <input
                     type="number"
                     id="widthNumber"
                     min="5"
                     max="500"
-                    value="40" />
+                    value="40"
+                    class="w-[60px] bg-black border border-black-light text-primary p-1 rounded font-inherit text-sm text-right focus:outline-none focus:border-primary" />
             </div>
         </div>
 
-        <div class="control-group">
-            <label>Grid Height</label>
-            <div class="input-row">
+        <div class="flex flex-col gap-2">
+            <label class="text-xs text-white-dark font-semibold flex justify-between items-center">Grid Height</label>
+            <div class="flex gap-2.5 items-center">
                 <input
                     type="range"
                     id="heightSlider"
                     min="5"
                     max="500"
-                    value="30" />
+                    value="30"
+                    class="flex-1 h-1 accent-primary hover:accent-tertiary transition-colors duration-200 w-full" />
                 <input
                     type="number"
                     id="heightNumber"
                     min="5"
                     max="500"
-                    value="30" />
+                    value="30"
+                    class="w-[60px] bg-black border border-black-light text-primary p-1 rounded font-inherit text-sm text-right focus:outline-none focus:border-primary" />
             </div>
         </div>
 
-        <div class="control-group">
-            <div style="display: flex; gap: 10px; align-items: center; justify-content: space-between">
-                <label>Show Grid</label>
+        <div class="flex flex-col gap-2">
+            <div class="flex gap-2.5 items-center justify-between">
+                <label class="text-xs text-white-dark font-semibold flex justify-between items-center">Show Grid</label>
                 <input
                     type="checkbox"
                     id="gridToggle"
@@ -143,25 +149,23 @@
             </div>
         </div>
 
-        <div
-            class="control-group"
-            style="gap: 0">
+        <div class="flex flex-col gap-0">
             <div
-                style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; background-color: var(--color-black-light); padding: 8px; border-radius: 4px"
-                :style="{ borderRadius: showMainGridStyle ? '4px 4px 0 0' : '4px' }"
+                class="flex justify-between items-center cursor-pointer bg-black-light p-2 rounded"
+                :class="{ 'rounded-b-none': showMainGridStyle }"
                 @click="showMainGridStyle = !showMainGridStyle">
-                <label style="cursor: pointer; font-size: 0.95rem">Main Grid Settings</label>
-                <span style="font-size: 0.8rem; color: var(--color-white-dark)">{{ showMainGridStyle ? "▲" : "▼" }}</span>
+                <label class="cursor-pointer text-[0.95rem] text-white-dark font-semibold">Main Grid Settings</label>
+                <span class="text-xs text-white-dark">{{ showMainGridStyle ? "▲" : "▼" }}</span>
             </div>
 
             <TransitionExpand :expanded="showMainGridStyle">
-                <div style="padding: 10px; background-color: var(--color-black-light--1); border-radius: 0 0 4px 4px">
-                    <div class="control-group">
-                        <div style="display: flex; justify-content: space-between; align-items: center">
-                            <label>Color</label>
+                <div class="p-2.5 bg-black-light--1 rounded-b">
+                    <div class="flex flex-col gap-2">
+                        <div class="flex justify-between items-center">
+                            <label class="text-xs text-white-dark font-semibold">Color</label>
                             <button
                                 @click="showGridPalette = !showGridPalette"
-                                style="background: none; border: none; color: var(--color-white-dark); cursor: pointer; font-size: 0.8rem; padding: 0">
+                                class="bg-none border-none text-white-dark cursor-pointer text-xs p-0">
                                 {{ showGridPalette ? "▲" : "▼" }}
                             </button>
                         </div>
@@ -173,8 +177,7 @@
 
                         <div
                             v-if="showGridPalette"
-                            class="palette"
-                            style="grid-template-columns: repeat(7, 1fr); margin-top: 5px">
+                            class="grid grid-cols-7 gap-1.5 mt-1.5">
                             <div
                                 v-for="color in gridColors"
                                 :key="color.value"
@@ -187,18 +190,16 @@
                         <div
                             v-else
                             @click="showGridPalette = true"
-                            style="cursor: pointer; height: 25px; border-radius: 4px; border: 1px solid var(--border); margin-top: 5px"
+                            class="cursor-pointer h-[25px] rounded border border-black-light mt-1.5"
                             :style="{ backgroundColor: selectedGridColor }"></div>
                     </div>
 
-                    <div class="control-group">
-                        <label>Style</label>
-                        <div
-                            class="input-row"
-                            style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px">
+                    <div class="flex flex-col gap-2 mt-2">
+                        <label class="text-xs text-white-dark font-semibold">Style</label>
+                        <div class="grid grid-cols-3 gap-1.5">
                             <select
                                 id="gridStyleSelect"
-                                style="position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px"
+                                class="absolute opacity-0 pointer-events-none w-px h-px"
                                 :value="selectedGridStyle">
                                 <option value="solid">Solid</option>
                                 <option value="dashed">Dashed</option>
@@ -210,61 +211,71 @@
                                 :class="{ active: selectedGridStyle === 'solid' }"
                                 @click="selectGridStyle('solid')"
                                 title="Solid">
-                                <div style="width: 100%; height: 2px; background-color: currentColor"></div>
+                                <div class="w-full h-[2px] bg-current"></div>
                             </button>
                             <button
                                 class="style-btn"
                                 :class="{ active: selectedGridStyle === 'dashed' }"
                                 @click="selectGridStyle('dashed')"
                                 title="Dashed">
-                                <div style="width: 100%; height: 0; border-top: 2px dashed currentColor"></div>
+                                <div class="w-full h-0 border-t-2 border-dashed border-current"></div>
                             </button>
                             <button
                                 class="style-btn"
                                 :class="{ active: selectedGridStyle === 'dotted' }"
                                 @click="selectGridStyle('dotted')"
                                 title="Dotted">
-                                <div style="width: 100%; height: 0; border-top: 2px dotted currentColor"></div>
+                                <div class="w-full h-0 border-t-2 border-dotted border-current"></div>
                             </button>
                         </div>
                     </div>
 
-                    <div class="control-group">
-                        <label>Thickness</label>
-                        <div class="input-row">
+                    <div class="flex flex-col gap-2 mt-2">
+                        <label class="text-xs text-white-dark font-semibold">Thickness</label>
+                        <div class="flex gap-2.5 items-center">
                             <input
                                 type="range"
                                 id="gridThicknessSlider"
                                 min="0.1"
                                 max="1.5"
                                 step="0.1"
-                                value="0.5" />
-                            <span id="gridThicknessVal">0.5</span>
+                                value="0.5"
+                                class="flex-1 h-1 accent-primary hover:accent-tertiary transition-colors duration-200 w-full" />
+                            <span
+                                id="gridThicknessVal"
+                                class="text-xs text-primary"
+                                >0.5</span
+                            >
                         </div>
                     </div>
 
-                    <div class="control-group">
-                        <label>Opacity</label>
-                        <div class="input-row">
+                    <div class="flex flex-col gap-2 mt-2">
+                        <label class="text-xs text-white-dark font-semibold">Opacity</label>
+                        <div class="flex gap-2.5 items-center">
                             <input
                                 type="range"
                                 id="gridOpacitySlider"
                                 min="0"
                                 max="1"
                                 step="0.1"
-                                value="0.2" />
-                            <span id="gridOpacityVal">0.2</span>
+                                value="0.2"
+                                class="flex-1 h-1 accent-primary hover:accent-tertiary transition-colors duration-200 w-full" />
+                            <span
+                                id="gridOpacityVal"
+                                class="text-xs text-primary"
+                                >0.2</span
+                            >
                         </div>
                     </div>
                 </div>
             </TransitionExpand>
         </div>
 
-        <hr style="border-color: var(--border); margin: 10px 0" />
+        <hr class="border-black-light my-2.5" />
 
-        <div class="control-group">
-            <div style="display: flex; gap: 10px; align-items: center; justify-content: space-between">
-                <label>Show Sub-Grid</label>
+        <div class="flex flex-col gap-2">
+            <div class="flex gap-2.5 items-center justify-between">
+                <label class="text-xs text-white-dark font-semibold flex justify-between items-center">Show Sub-Grid</label>
                 <input
                     type="checkbox"
                     id="subGridToggle"
@@ -272,25 +283,23 @@
             </div>
         </div>
 
-        <div
-            class="control-group"
-            style="gap: 0">
+        <div class="flex flex-col gap-0">
             <div
-                style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; background-color: var(--color-black-light); padding: 8px; border-radius: 4px"
-                :style="{ borderRadius: showSubGridStyle ? '4px 4px 0 0' : '4px' }"
+                class="flex justify-between items-center cursor-pointer bg-black-light p-2 rounded"
+                :class="{ 'rounded-b-none': showSubGridStyle }"
                 @click="showSubGridStyle = !showSubGridStyle">
-                <label style="cursor: pointer; font-size: 0.95rem">Sub-Grid Settings</label>
-                <span style="font-size: 0.8rem; color: var(--color-white-dark)">{{ showSubGridStyle ? "▲" : "▼" }}</span>
+                <label class="cursor-pointer text-[0.95rem] text-white-dark font-semibold">Sub-Grid Settings</label>
+                <span class="text-xs text-white-dark">{{ showSubGridStyle ? "▲" : "▼" }}</span>
             </div>
 
             <TransitionExpand :expanded="showSubGridStyle">
-                <div style="padding: 10px; background-color: var(--color-black-light--1); border-radius: 0 0 4px 4px">
-                    <div class="control-group">
-                        <div style="display: flex; justify-content: space-between; align-items: center">
-                            <label>Color</label>
+                <div class="p-2.5 bg-black-light--1 rounded-b">
+                    <div class="flex flex-col gap-2">
+                        <div class="flex justify-between items-center">
+                            <label class="text-xs text-white-dark font-semibold">Color</label>
                             <button
                                 @click="showSubGridPalette = !showSubGridPalette"
-                                style="background: none; border: none; color: var(--color-white-dark); cursor: pointer; font-size: 0.8rem; padding: 0">
+                                class="bg-none border-none text-white-dark cursor-pointer text-xs p-0">
                                 {{ showSubGridPalette ? "▲" : "▼" }}
                             </button>
                         </div>
@@ -302,8 +311,7 @@
 
                         <div
                             v-if="showSubGridPalette"
-                            class="palette"
-                            style="grid-template-columns: repeat(7, 1fr); margin-top: 5px">
+                            class="grid grid-cols-7 gap-1.5 mt-1.5">
                             <div
                                 v-for="color in gridColors"
                                 :key="color.value"
@@ -316,18 +324,16 @@
                         <div
                             v-else
                             @click="showSubGridPalette = true"
-                            style="cursor: pointer; height: 25px; border-radius: 4px; border: 1px solid var(--border); margin-top: 5px"
+                            class="cursor-pointer h-[25px] rounded border border-black-light mt-1.5"
                             :style="{ backgroundColor: selectedSubGridColor }"></div>
                     </div>
 
-                    <div class="control-group">
-                        <label>Style</label>
-                        <div
-                            class="input-row"
-                            style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px">
+                    <div class="flex flex-col gap-2 mt-2">
+                        <label class="text-xs text-white-dark font-semibold">Style</label>
+                        <div class="grid grid-cols-3 gap-1.5">
                             <select
                                 id="subGridStyleSelect"
-                                style="position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px"
+                                class="absolute opacity-0 pointer-events-none w-px h-px"
                                 :value="selectedSubGridStyle">
                                 <option value="solid">Solid</option>
                                 <option value="dashed">Dashed</option>
@@ -339,58 +345,68 @@
                                 :class="{ active: selectedSubGridStyle === 'solid' }"
                                 @click="selectSubGridStyle('solid')"
                                 title="Solid">
-                                <div style="width: 100%; height: 2px; background-color: currentColor"></div>
+                                <div class="w-full h-[2px] bg-current"></div>
                             </button>
                             <button
                                 class="style-btn"
                                 :class="{ active: selectedSubGridStyle === 'dashed' }"
                                 @click="selectSubGridStyle('dashed')"
                                 title="Dashed">
-                                <div style="width: 100%; height: 0; border-top: 2px dashed currentColor"></div>
+                                <div class="w-full h-0 border-t-2 border-dashed border-current"></div>
                             </button>
                             <button
                                 class="style-btn"
                                 :class="{ active: selectedSubGridStyle === 'dotted' }"
                                 @click="selectSubGridStyle('dotted')"
                                 title="Dotted">
-                                <div style="width: 100%; height: 0; border-top: 2px dotted currentColor"></div>
+                                <div class="w-full h-0 border-t-2 border-dotted border-current"></div>
                             </button>
                         </div>
                     </div>
 
-                    <div class="control-group">
-                        <label>Thickness</label>
-                        <div class="input-row">
+                    <div class="flex flex-col gap-2 mt-2">
+                        <label class="text-xs text-white-dark font-semibold">Thickness</label>
+                        <div class="flex gap-2.5 items-center">
                             <input
                                 type="range"
                                 id="subGridThicknessSlider"
                                 min="0.1"
                                 max="1.5"
                                 step="0.1"
-                                value="0.5" />
-                            <span id="subGridThicknessVal">0.5</span>
+                                value="0.5"
+                                class="flex-1 h-1 accent-primary hover:accent-tertiary transition-colors duration-200 w-full" />
+                            <span
+                                id="subGridThicknessVal"
+                                class="text-xs text-primary"
+                                >0.5</span
+                            >
                         </div>
                     </div>
 
-                    <div class="control-group">
-                        <label>Opacity</label>
-                        <div class="input-row">
+                    <div class="flex flex-col gap-2 mt-2">
+                        <label class="text-xs text-white-dark font-semibold">Opacity</label>
+                        <div class="flex gap-2.5 items-center">
                             <input
                                 type="range"
                                 id="subGridOpacitySlider"
                                 min="0"
                                 max="1"
                                 step="0.1"
-                                value="1" />
-                            <span id="subGridOpacityVal">1.0</span>
+                                value="1"
+                                class="flex-1 h-1 accent-primary hover:accent-tertiary transition-colors duration-200 w-full" />
+                            <span
+                                id="subGridOpacityVal"
+                                class="text-xs text-primary"
+                                >1.0</span
+                            >
                         </div>
                     </div>
                 </div>
             </TransitionExpand>
         </div>
 
-        <div class="control-group">
-            <label style="color: var(--accent)">
+        <div class="flex flex-col gap-2">
+            <label class="text-xs text-primary font-semibold flex justify-between items-center">
                 Include Grid in Export
                 <input
                     type="checkbox"
@@ -399,3 +415,20 @@
         </div>
     </ControlSection>
 </template>
+
+<style scoped>
+    @reference "../style.css";
+
+    .style-btn {
+        @apply bg-black border border-black-light rounded h-[30px] flex items-center justify-center px-2.5 cursor-pointer text-white-dark transition-all duration-200 hover:border-tertiary hover:text-white;
+    }
+    .style-btn.active {
+        @apply bg-primary border-primary text-white;
+    }
+    .swatch {
+        @apply w-full aspect-square rounded cursor-pointer border-2 border-transparent transition-transform duration-100 hover:scale-110 hover:z-10;
+    }
+    .swatch.selected {
+        @apply border-white ring-2 ring-primary;
+    }
+</style>

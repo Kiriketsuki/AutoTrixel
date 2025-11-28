@@ -17,40 +17,40 @@
 
 <template>
     <ControlSection title="Tools">
-        <div class="tools-grid">
+        <div class="grid grid-cols-2 gap-2">
             <button
-                class="tool-btn active"
+                class="tool-btn active bg-black border border-black-light text-white-dark p-2 rounded-md cursor-pointer transition-all duration-200 flex items-center justify-center gap-2 text-sm hover:bg-tertiary-dark-1 hover:border-tertiary hover:text-white"
                 id="tool-pencil"
                 @click="setTool('pencil')">
                 ✏️ Draw
             </button>
             <button
-                class="tool-btn"
+                class="tool-btn bg-black border border-black-light text-white-dark p-2 rounded-md cursor-pointer transition-all duration-200 flex items-center justify-center gap-2 text-sm hover:bg-tertiary-dark-1 hover:border-tertiary hover:text-white"
                 id="tool-bucket"
                 @click="setTool('bucket')">
                 🪣 Fill
             </button>
             <button
-                class="tool-btn"
+                class="tool-btn bg-black border border-black-light text-white-dark p-2 rounded-md cursor-pointer transition-all duration-200 flex items-center justify-center gap-2 text-sm hover:bg-tertiary-dark-1 hover:border-tertiary hover:text-white"
                 id="tool-eraser"
                 @click="setTool('eraser')">
                 🧹 Erase
             </button>
             <button
-                class="tool-btn"
+                class="tool-btn bg-black border border-black-light text-white-dark p-2 rounded-md cursor-pointer transition-all duration-200 flex items-center justify-center gap-2 text-sm hover:bg-tertiary-dark-1 hover:border-tertiary hover:text-white"
                 id="tool-picker"
                 @click="setTool('picker')">
                 🧪 Pick
             </button>
             <button
-                class="tool-btn"
+                class="tool-btn bg-black border border-black-light text-white-dark p-2 rounded-md cursor-pointer transition-all duration-200 flex items-center justify-center gap-2 text-sm hover:bg-tertiary-dark-1 hover:border-tertiary hover:text-white"
                 id="tool-subdivide"
                 @click="setTool('subdivide')">
                 ◭ Subdivide
             </button>
         </div>
         <button
-            class="undo-btn"
+            class="bg-black border border-black-light text-white-dark p-2 rounded-md cursor-pointer flex items-center justify-center gap-1.5 text-sm hover:bg-tertiary-dark-1 hover:border-tertiary hover:text-white active:bg-tertiary-dark disabled:opacity-50 disabled:cursor-not-allowed w-full mt-2"
             id="btnUndo"
             @click="undoAction">
             <svg
@@ -66,13 +66,13 @@
         </button>
 
         <div
-            class="control-group"
+            class="flex flex-col gap-2"
             style="margin-top: 5px">
-            <label
+            <label class="text-xs text-white-dark font-semibold flex justify-between items-center"
                 >Brush Size
                 <span
                     id="brushVal"
-                    class="value-display"
+                    class="text-xs text-primary"
                     >1</span
                 ></label
             >
@@ -81,7 +81,16 @@
                 id="brushInput"
                 min="1"
                 max="5"
-                value="1" />
+                value="1"
+                class="flex-1 h-1 accent-primary hover:accent-tertiary transition-colors duration-200 w-full" />
         </div>
     </ControlSection>
 </template>
+
+<style scoped>
+    @reference "../style.css";
+
+    .tool-btn.active {
+        @apply bg-primary text-white border-primary font-bold;
+    }
+</style>

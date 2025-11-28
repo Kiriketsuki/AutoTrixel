@@ -9,27 +9,10 @@
 
 <template>
     <div
-        class="expand-wrapper"
-        :class="{ expanded: expanded }">
-        <div class="expand-inner">
+        class="grid grid-rows-[0fr] transition-[grid-template-rows] duration-300 ease-out"
+        :class="{ 'grid-rows-[1fr]': expanded }">
+        <div class="overflow-hidden min-h-0">
             <slot></slot>
         </div>
     </div>
 </template>
-
-<style scoped>
-    .expand-wrapper {
-        display: grid;
-        grid-template-rows: 0fr;
-        transition: grid-template-rows 0.3s ease-out;
-    }
-
-    .expand-wrapper.expanded {
-        grid-template-rows: 1fr;
-    }
-
-    .expand-inner {
-        overflow: hidden;
-        min-height: 0;
-    }
-</style>

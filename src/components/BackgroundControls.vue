@@ -33,28 +33,26 @@
 
 <template>
     <ControlSection title="Background Image">
-        <div class="control-group">
-            <label>Control Mode</label>
-            <div class="btn-group">
+        <div class="flex flex-col gap-2">
+            <label class="text-xs text-white-dark font-semibold flex justify-between items-center">Control Mode</label>
+            <div class="flex gap-2">
                 <button
-                    class="action-btn"
-                    :class="{ primary: controlMode === 'canvas' }"
-                    style="flex: 1"
+                    class="bg-black text-white-dark border border-black-light p-2.5 rounded-md cursor-pointer font-semibold transition-colors duration-200 mt-1.5 hover:bg-tertiary-dark-1 hover:border-tertiary hover:text-white flex-1"
+                    :class="{ 'bg-primary text-white border-none hover:bg-primary-light': controlMode === 'canvas' }"
                     @click="setControlMode('canvas')">
                     Canvas
                 </button>
                 <button
-                    class="action-btn"
-                    :class="{ primary: controlMode === 'background' }"
-                    style="flex: 1"
+                    class="bg-black text-white-dark border border-black-light p-2.5 rounded-md cursor-pointer font-semibold transition-colors duration-200 mt-1.5 hover:bg-tertiary-dark-1 hover:border-tertiary hover:text-white flex-1"
+                    :class="{ 'bg-primary text-white border-none hover:bg-primary-light': controlMode === 'background' }"
                     @click="setControlMode('background')">
                     Background
                 </button>
             </div>
         </div>
 
-        <div class="control-group">
-            <label>Image Source</label>
+        <div class="flex flex-col gap-2">
+            <label class="text-xs text-white-dark font-semibold flex justify-between items-center">Image Source</label>
             <input
                 type="file"
                 id="bgImageInput"
@@ -62,70 +60,73 @@
                 style="display: none"
                 @change="handleImageUpload" />
             <button
-                class="action-btn"
-                style="width: 100%; margin-bottom: 10px"
+                class="bg-black text-white-dark border border-black-light p-2.5 rounded-md cursor-pointer font-semibold transition-colors duration-200 mt-1.5 hover:bg-tertiary-dark-1 hover:border-tertiary hover:text-white w-full mb-2.5"
                 @click="triggerImageUpload">
                 Import Image
             </button>
 
             <TransitionExpand :expanded="bgState.hasImage">
-                <div class="control-group">
-                    <div class="slider-row">
-                        <span class="slider-label">X Pos</span>
+                <div class="flex flex-col gap-2">
+                    <div class="flex flex-col gap-0.5">
+                        <span class="text-xs text-white-dark">X Pos</span>
                         <input
                             type="range"
                             min="-500"
                             max="500"
                             :value="bgState.x"
-                            @input="updateBg('x', $event.target.value)" />
+                            @input="updateBg('x', $event.target.value)"
+                            class="flex-1 h-1 accent-primary hover:accent-tertiary transition-colors duration-200 w-full" />
                         <input
                             type="number"
-                            style="width: 50px"
+                            class="w-[50px] bg-black border border-black-light text-primary p-1 rounded font-inherit text-sm text-right focus:outline-none focus:border-primary"
                             :value="bgState.x"
                             @input="updateBg('x', $event.target.value)" />
                     </div>
-                    <div class="slider-row">
-                        <span class="slider-label">Y Pos</span>
+                    <div class="flex flex-col gap-0.5">
+                        <span class="text-xs text-white-dark">Y Pos</span>
                         <input
                             type="range"
                             min="-500"
                             max="500"
                             :value="bgState.y"
-                            @input="updateBg('y', $event.target.value)" />
+                            @input="updateBg('y', $event.target.value)"
+                            class="flex-1 h-1 accent-primary hover:accent-tertiary transition-colors duration-200 w-full" />
                         <input
                             type="number"
-                            style="width: 50px"
+                            class="w-[50px] bg-black border border-black-light text-primary p-1 rounded font-inherit text-sm text-right focus:outline-none focus:border-primary"
                             :value="bgState.y"
                             @input="updateBg('y', $event.target.value)" />
                     </div>
-                    <div class="slider-row">
-                        <span class="slider-label">Scale</span>
+                    <div class="flex flex-col gap-0.5">
+                        <span class="text-xs text-white-dark">Scale</span>
                         <input
                             type="range"
                             min="0.1"
                             max="5"
                             step="0.01"
                             :value="bgState.scale"
-                            @input="updateBg('scale', $event.target.value)" />
+                            @input="updateBg('scale', $event.target.value)"
+                            class="flex-1 h-1 accent-primary hover:accent-tertiary transition-colors duration-200 w-full" />
                         <input
                             type="number"
-                            style="width: 50px"
+                            class="w-[50px] bg-black border border-black-light text-primary p-1 rounded font-inherit text-sm text-right focus:outline-none focus:border-primary"
                             step="0.01"
                             :value="bgState.scale"
                             @input="updateBg('scale', $event.target.value)" />
                     </div>
-                    <div class="slider-row">
-                        <span class="slider-label">Opacity</span>
+                    <div class="flex flex-col gap-0.5">
+                        <span class="text-xs text-white-dark">Opacity</span>
                         <input
                             type="range"
                             min="0"
                             max="1"
                             step="0.01"
                             :value="bgState.opacity"
-                            @input="updateBg('opacity', $event.target.value)" />
+                            @input="updateBg('opacity', $event.target.value)"
+                            class="flex-1 h-1 accent-primary hover:accent-tertiary transition-colors duration-200 w-full" />
                         <input
                             type="number"
-                            style="width: 50px"
+                            class="w-[50px] bg-black border border-black-light text-primary p-1 rounded font-inherit text-sm text-right focus:outline-none focus:border-primary"
                             step="0.01"
                             :value="bgState.opacity"
                             @input="updateBg('opacity', $event.target.value)" />
