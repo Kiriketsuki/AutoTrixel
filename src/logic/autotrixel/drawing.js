@@ -1,11 +1,18 @@
 import { getTrianglePath } from "./geometry.js";
 
-export function fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half) {
+export function fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage) {
     artCtx.clearRect(0, 0, artCanvas.width, artCanvas.height);
 
     if (config.bgColor !== "transparent") {
         artCtx.fillStyle = config.bgColor;
         artCtx.fillRect(0, 0, artCanvas.width, artCanvas.height);
+    }
+
+    if (bgImage && bgImage.img) {
+        artCtx.save();
+        artCtx.globalAlpha = bgImage.opacity;
+        artCtx.drawImage(bgImage.img, bgImage.x, bgImage.y, bgImage.img.width * bgImage.scale, bgImage.img.height * bgImage.scale);
+        artCtx.restore();
     }
 
     const keys = Object.keys(gridData);
