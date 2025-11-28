@@ -1,5 +1,5 @@
 <script setup>
-    import { onBeforeUnmount, onMounted, ref } from "vue";
+    import { onBeforeUnmount, onMounted, ref, shallowRef } from "vue";
     import { createAutoTrixel } from "./logic/createAutoTrixel";
     import ColorControls from "./components/ColorControls.vue";
     import GridControls from "./components/GridControls.vue";
@@ -9,44 +9,44 @@
     const appRoot = ref(null);
     const controlMode = ref("canvas"); // 'canvas' or 'background'
     const bgState = ref({ x: 0, y: 0, scale: 1, opacity: 0.5 });
-    let autoTrixelInstance = null;
+    const autoTrixelInstance = shallowRef(null);
 
     const toggleSidebar = () => {
         document.body.classList.toggle("sidebar-closed");
     };
 
     const resetCanvas = () => {
-        autoTrixelInstance?.resetCanvas();
+        autoTrixelInstance.value?.resetCanvas();
     };
 
     const exportImage = () => {
-        autoTrixelInstance?.exportImage();
+        autoTrixelInstance.value?.exportImage();
     };
 
     const exportSVG = () => {
-        autoTrixelInstance?.exportSVG();
+        autoTrixelInstance.value?.exportSVG();
     };
 
     const updateBg = (prop, val) => {
         const numVal = parseFloat(val);
         bgState.value[prop] = numVal;
-        autoTrixelInstance?.updateBackground({ [prop]: numVal });
+        autoTrixelInstance.value?.updateBackground({ [prop]: numVal });
     };
 
     const setControlMode = (mode) => {
         controlMode.value = mode;
-        autoTrixelInstance?.setControlMode(mode);
+        autoTrixelInstance.value?.setControlMode(mode);
     };
 
     onMounted(() => {
-        autoTrixelInstance = createAutoTrixel(appRoot.value);
-        autoTrixelInstance.onBgChange((newState) => {
+        autoTrixelInstance.value = createAutoTrixel(appRoot.value);
+        autoTrixelInstance.value.onBgChange((newState) => {
             bgState.value = { ...newState };
         });
     });
 
     onBeforeUnmount(() => {
-        autoTrixelInstance?.destroy();
+        autoTrixelInstance.value?.destroy();
     });
 </script>
 

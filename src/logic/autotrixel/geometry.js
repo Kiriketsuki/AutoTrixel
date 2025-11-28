@@ -116,3 +116,89 @@ export function findBestCenter(targetR, targetC, size, config) {
     }
     return bestAnchor;
 }
+
+export function getTriangleVertices(r, c, triHeight, W_half) {
+    const xBase = c * W_half;
+    const yBase = r * triHeight;
+    const isUp = r % 2 === Math.abs(c) % 2;
+
+    if (isUp) {
+        return [
+            { x: xBase, y: yBase + triHeight }, // Bottom Left
+            { x: xBase + 2 * W_half, y: yBase + triHeight }, // Bottom Right
+            { x: xBase + W_half, y: yBase }, // Top Center
+        ];
+    } else {
+        return [
+            { x: xBase, y: yBase }, // Top Left
+            { x: xBase + 2 * W_half, y: yBase }, // Top Right
+            { x: xBase + W_half, y: yBase + triHeight }, // Bottom Center
+        ];
+    }
+}
+
+export function getBarycentric(p, a, b, c) {
+    const v0 = { x: b.x - a.x, y: b.y - a.y };
+    const v1 = { x: c.x - a.x, y: c.y - a.y };
+    const v2 = { x: p.x - a.x, y: p.y - a.y };
+
+    const d00 = v0.x * v0.x + v0.y * v0.y;
+    const d01 = v0.x * v1.x + v0.y * v1.y;
+    const d11 = v1.x * v1.x + v1.y * v1.y;
+    const d20 = v2.x * v0.x + v2.y * v0.y;
+    const d21 = v2.x * v1.x + v2.y * v1.y;
+
+    const denom = d00 * d11 - d01 * d01;
+    const v = (d11 * d20 - d01 * d21) / denom;
+    const w = (d00 * d21 - d01 * d20) / denom;
+    const u = 1.0 - v - w;
+
+    return { u, v, w };
+}
+
+export function findBestCenterPixel(x, y, size, config, triHeight, W_half) {
+    // Approximate grid coordinate
+    const approxCell = pixelToGrid(x, y, triHeight, W_half, config);
+    if (!approxCell) return null;
+
+    let bestAnchor = { r: approxCell.r, c: approxCell.c };
+    let minDist = Infinity;
+
+    // Search range around the approximate cell
+    const range = 2; // Check 2 cells in each direction
+
+    for (let dr = -range; dr <= range; dr++) {
+        for (let dc = -range; dc <= range; dc++) {
+            const r = approxCell.r + dr;
+            const c = approxCell.c + dc;
+
+            // Get the cluster for this potential anchor
+            const cluster = getTriangleCluster(r, c, size, config);
+            if (cluster.length === 0) continue;
+
+            // Calculate centroid of the cluster
+            let sumX = 0;
+            let sumY = 0;
+            cluster.forEach((cell) => {
+                const vertices = getTriangleVertices(cell.r, cell.c, triHeight, W_half);
+                // Centroid of a triangle is average of vertices
+                const cx = (vertices[0].x + vertices[1].x + vertices[2].x) / 3;
+                const cy = (vertices[0].y + vertices[1].y + vertices[2].y) / 3;
+                sumX += cx;
+                sumY += cy;
+            });
+            const centroidX = sumX / cluster.length;
+            const centroidY = sumY / cluster.length;
+
+            // Distance from mouse to centroid
+            const dist = Math.sqrt((x - centroidX) ** 2 + (y - centroidY) ** 2);
+
+            if (dist < minDist) {
+                minDist = dist;
+                bestAnchor = { r, c };
+            }
+        }
+    }
+
+    return bestAnchor;
+}
