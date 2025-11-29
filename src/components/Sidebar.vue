@@ -1,6 +1,6 @@
 <script setup>
     import { ref } from "vue";
-    import ColorControls from "./ColorControls.vue";
+    import PaintControls from "./PaintControls.vue";
     import GridControls from "./GridControls.vue";
     import BackgroundControls from "./BackgroundControls.vue";
     import ToolsControl from "./ToolsControl.vue";
@@ -93,7 +93,7 @@
 
         <ToolsControl :autoTrixelInstance="autoTrixelInstance" />
 
-        <ColorControls :autoTrixelInstance="autoTrixelInstance" />
+        <PaintControls :autoTrixelInstance="autoTrixelInstance" />
 
         <BackgroundControls
             :autoTrixelInstance="autoTrixelInstance"

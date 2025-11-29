@@ -1,6 +1,6 @@
 import { getTrianglePath, getTriangleVertices } from "./geometry.js";
 
-export function fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage) {
+export function fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry) {
     artCtx.clearRect(0, 0, artCanvas.width, artCanvas.height);
 
     if (config.bgColor !== "transparent") {
@@ -23,6 +23,42 @@ export function fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_hal
             artCtx.strokeStyle = colorOrData;
             artCtx.lineWidth = 0.5;
             artCtx.stroke(path);
+        } else if (colorOrData && colorOrData.type === "image") {
+            const path = getTrianglePath(r, c, triHeight, W_half);
+            artCtx.save();
+            artCtx.clip(path);
+
+            const img = imageRegistry ? imageRegistry.get(colorOrData.imageId) : null;
+            if (img) {
+                const vertices = getTriangleVertices(r, c, triHeight, W_half);
+                const minX = Math.min(vertices[0].x, vertices[1].x, vertices[2].x);
+                const maxX = Math.max(vertices[0].x, vertices[1].x, vertices[2].x);
+                const minY = Math.min(vertices[0].y, vertices[1].y, vertices[2].y);
+                const maxY = Math.max(vertices[0].y, vertices[1].y, vertices[2].y);
+                const w = maxX - minX;
+                const h = maxY - minY;
+
+                // Cover logic
+                const imgRatio = img.width / img.height;
+                const triRatio = w / h;
+
+                let drawW, drawH, drawX, drawY;
+
+                if (imgRatio > triRatio) {
+                    drawH = h;
+                    drawW = h * imgRatio;
+                    drawX = minX - (drawW - w) / 2;
+                    drawY = minY;
+                } else {
+                    drawW = w;
+                    drawH = w / imgRatio;
+                    drawX = minX;
+                    drawY = minY - (drawH - h) / 2;
+                }
+
+                artCtx.drawImage(img, drawX, drawY, drawW, drawH);
+            }
+            artCtx.restore();
         } else if (colorOrData && colorOrData.subdivided) {
             // Calculate sub-triangle dimensions and positions
             // This is tricky because getTrianglePath relies on integer grid coordinates.
