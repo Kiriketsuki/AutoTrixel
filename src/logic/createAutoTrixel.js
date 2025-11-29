@@ -116,12 +116,17 @@ export function createAutoTrixel(rootElement) {
         opacity: 0.5,
     };
 
+    let zoomLevel = 1;
+
     function updateDimensions() {
         triHeight = (config.triSide * Math.sqrt(3)) / 2;
         W_half = config.triSide / 2;
 
-        const w = Math.ceil(config.widthTriangles * W_half + W_half);
-        const h = Math.ceil(config.heightTriangles * triHeight);
+        config.widthTriangles = Math.ceil(config.width / W_half);
+        config.heightTriangles = Math.ceil(config.height / triHeight);
+
+        const w = config.width;
+        const h = config.height;
 
         artCanvas.width = w;
         artCanvas.height = h;
@@ -135,7 +140,7 @@ export function createAutoTrixel(rootElement) {
     }
 
     function updateCanvasTransform() {
-        canvasStack.style.transform = `translate(${panOffsetX}px, ${panOffsetY}px)`;
+        canvasStack.style.transform = `translate(${panOffsetX}px, ${panOffsetY}px) scale(${zoomLevel})`;
     }
 
     function showToast(message) {
@@ -248,14 +253,23 @@ export function createAutoTrixel(rootElement) {
         }
     }
 
-    function zoom(change) {
+    function scale(change) {
         const newSize = clamp(config.triSide + change, 5, 200);
         if (newSize !== config.triSide) {
             config.triSide = newSize;
             scaleSlider.value = newSize;
             scaleNumber.value = newSize;
             updateDimensions();
-            showToast(`Zoom: ${newSize}px`);
+            showToast(`Scale: ${newSize}px`);
+        }
+    }
+
+    function performZoom(change) {
+        const newZoom = clamp(zoomLevel + change, 0.1, 5);
+        if (Math.abs(newZoom - zoomLevel) > 0.001) {
+            zoomLevel = newZoom;
+            updateCanvasTransform();
+            showToast(`Zoom: ${(zoomLevel * 100).toFixed(0)}%`);
         }
     }
 
@@ -445,8 +459,8 @@ export function createAutoTrixel(rootElement) {
         cursorCanvas.addEventListener("mousedown", (e) => {
             if (e.button === 1) {
                 e.preventDefault();
-                // Check for BG Pan Shortcut: Ctrl + Shift + Middle Click
-                if ((e.ctrlKey && e.shiftKey) || controlMode === "background") {
+                // Check for BG Pan Shortcut: Ctrl + Alt + Middle Click
+                if ((e.ctrlKey && e.altKey) || controlMode === "background") {
                     isBgPanning = true;
                     bgPanStartX = e.clientX;
                     bgPanStartY = e.clientY;
@@ -465,8 +479,8 @@ export function createAutoTrixel(rootElement) {
             }
 
             const rect = cursorCanvas.getBoundingClientRect();
-            lastMouseX = e.clientX - rect.left;
-            lastMouseY = e.clientY - rect.top;
+            lastMouseX = (e.clientX - rect.left) / zoomLevel;
+            lastMouseY = (e.clientY - rect.top) / zoomLevel;
 
             tempSnapshot = saveStateForUndo();
             isDrawing = true;
@@ -516,8 +530,8 @@ export function createAutoTrixel(rootElement) {
             }
 
             const rect = cursorCanvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
+            const x = (e.clientX - rect.left) / zoomLevel;
+            const y = (e.clientY - rect.top) / zoomLevel;
 
             const cell = pixelToGrid(x, y, triHeight, W_half, config);
 
@@ -619,8 +633,8 @@ export function createAutoTrixel(rootElement) {
         cursorCanvas.addEventListener("mouseenter", (e) => {
             if (isDrawing) {
                 const rect = cursorCanvas.getBoundingClientRect();
-                lastMouseX = e.clientX - rect.left;
-                lastMouseY = e.clientY - rect.top;
+                lastMouseX = (e.clientX - rect.left) / zoomLevel;
+                lastMouseY = (e.clientY - rect.top) / zoomLevel;
             }
         });
 
@@ -643,8 +657,8 @@ export function createAutoTrixel(rootElement) {
                 if (e.touches.length > 0) {
                     const touch = e.touches[0];
                     const rect = cursorCanvas.getBoundingClientRect();
-                    lastMouseX = touch.clientX - rect.left;
-                    lastMouseY = touch.clientY - rect.top;
+                    lastMouseX = (touch.clientX - rect.left) / zoomLevel;
+                    lastMouseY = (touch.clientY - rect.top) / zoomLevel;
 
                     tempSnapshot = saveStateForUndo();
                     isDrawing = true;
@@ -687,8 +701,8 @@ export function createAutoTrixel(rootElement) {
                 if (e.touches.length > 0) {
                     const touch = e.touches[0];
                     const rect = cursorCanvas.getBoundingClientRect();
-                    const x = touch.clientX - rect.left;
-                    const y = touch.clientY - rect.top;
+                    const x = (touch.clientX - rect.left) / zoomLevel;
+                    const y = (touch.clientY - rect.top) / zoomLevel;
 
                     const cell = pixelToGrid(x, y, triHeight, W_half, config);
                     if (cell) {
@@ -802,10 +816,18 @@ export function createAutoTrixel(rootElement) {
                     undoAction();
                 } else if (e.key === "=" || e.key === "+") {
                     e.preventDefault();
-                    zoom(5);
+                    if (e.shiftKey) {
+                        scale(5);
+                    } else {
+                        performZoom(0.1);
+                    }
                 } else if (e.key === "-") {
                     e.preventDefault();
-                    zoom(-5);
+                    if (e.shiftKey) {
+                        scale(-5);
+                    } else {
+                        performZoom(-0.1);
+                    }
                 } else if (e.key === "[") {
                     e.preventDefault();
                     updateBrushSize(-1);
@@ -865,16 +887,21 @@ export function createAutoTrixel(rootElement) {
             (e) => {
                 if (e.ctrlKey) {
                     e.preventDefault();
-                    // Check for BG Scale Shortcut: Ctrl + Shift + Scroll
-                    if (e.shiftKey || controlMode === "background") {
+                    if (e.shiftKey) {
+                        // Ctrl + Shift + Scroll -> Scale (Triangle Size)
+                        const delta = e.deltaY < 0 ? 1 : -1;
+                        scale(delta * 5);
+                    } else if (e.altKey) {
+                        // Ctrl + Alt + Scroll -> BG Scale
                         const delta = e.deltaY < 0 ? 0.1 : -0.1;
                         bgImage.scale = clamp(bgImage.scale + delta, 0.1, 5);
                         fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
                         notifyBgChange();
                         showToast(`BG Scale: ${bgImage.scale.toFixed(2)}`);
                     } else {
-                        const delta = e.deltaY < 0 ? 1 : -1;
-                        zoom(delta * 5);
+                        // Ctrl + Scroll -> Zoom (Canvas Zoom)
+                        const delta = e.deltaY < 0 ? 0.1 : -0.1;
+                        performZoom(delta);
                     }
                 }
             },
@@ -898,7 +925,7 @@ export function createAutoTrixel(rootElement) {
         });
 
         const updateWidth = (val) => {
-            config.widthTriangles = parseInt(val, 10);
+            config.width = parseInt(val, 10);
             widthSlider.value = val;
             widthNumber.value = val;
             updateDimensions();
@@ -907,7 +934,7 @@ export function createAutoTrixel(rootElement) {
         widthNumber.addEventListener("input", (e) => updateWidth(e.target.value));
 
         const updateHeight = (val) => {
-            config.heightTriangles = parseInt(val, 10);
+            config.height = parseInt(val, 10);
             heightSlider.value = val;
             heightNumber.value = val;
             updateDimensions();
