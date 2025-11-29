@@ -1,7 +1,7 @@
 {
   "name": "autotrixel",
   "private": true,
-  "version": "25.11.5.0",
+  "version": "25.11.6.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
