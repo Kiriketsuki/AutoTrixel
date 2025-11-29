@@ -28,17 +28,23 @@ export function fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_hal
             artCtx.save();
             artCtx.clip(path);
 
+            const minX = c * W_half;
+            const minY = r * triHeight;
+            const w = 2 * W_half;
+            const h = triHeight;
+
+            const isUp = r % 2 === Math.abs(c) % 2;
+            if (!isUp) {
+                const centerX = minX + W_half;
+                const centerY = minY + triHeight / 2;
+
+                artCtx.translate(centerX, centerY);
+                artCtx.rotate(Math.PI);
+                artCtx.translate(-centerX, -centerY);
+            }
+
             const img = imageRegistry ? imageRegistry.get(colorOrData.imageId) : null;
             if (img) {
-                const vertices = getTriangleVertices(r, c, triHeight, W_half);
-                const minX = Math.min(vertices[0].x, vertices[1].x, vertices[2].x);
-                const maxX = Math.max(vertices[0].x, vertices[1].x, vertices[2].x);
-                const minY = Math.min(vertices[0].y, vertices[1].y, vertices[2].y);
-                const maxY = Math.max(vertices[0].y, vertices[1].y, vertices[2].y);
-                const w = maxX - minX;
-                const h = maxY - minY;
-
-                // Cover logic
                 const imgRatio = img.width / img.height;
                 const triRatio = w / h;
 
@@ -109,10 +115,62 @@ export function fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_hal
         }
     };
 
+    // Optimization: Batch draw solid colors
+    const batches = new Map(); // color -> [ {r, c} ]
+    const complexItems = []; // [ {r, c, data} ]
+
     const keys = Object.keys(gridData);
     keys.forEach((key) => {
         const [r, c] = key.split(",").map(Number);
-        drawTriangle(r, c, gridData[key], triHeight, W_half);
+        const data = gridData[key];
+        if (typeof data === "string") {
+            if (!batches.has(data)) {
+                batches.set(data, []);
+            }
+            batches.get(data).push({ r, c });
+        } else {
+            complexItems.push({ r, c, data });
+        }
+    });
+
+    // Draw batches
+    batches.forEach((cells, color) => {
+        artCtx.beginPath();
+        cells.forEach(({ r, c }) => {
+            const path = getTrianglePath(r, c, triHeight, W_half);
+            // Path2D doesn't allow extracting points easily, but we can add the path to the context
+            // However, adding many paths to context might be slow?
+            // Actually, ctx.fill(path) fills one path.
+            // To batch, we need to construct a single path or use multiple subpaths.
+            // But getTrianglePath returns a Path2D.
+            // We can't merge Path2D objects easily into one fill call without using addPath (which is newish).
+            // Alternatively, we can manually draw the lines here instead of using getTrianglePath.
+
+            const xBase = c * W_half;
+            const yBase = r * triHeight;
+            const isUp = r % 2 === Math.abs(c) % 2;
+
+            if (isUp) {
+                artCtx.moveTo(xBase, yBase + triHeight);
+                artCtx.lineTo(xBase + 2 * W_half, yBase + triHeight);
+                artCtx.lineTo(xBase + W_half, yBase);
+            } else {
+                artCtx.moveTo(xBase, yBase);
+                artCtx.lineTo(xBase + 2 * W_half, yBase);
+                artCtx.lineTo(xBase + W_half, yBase + triHeight);
+            }
+            artCtx.closePath();
+        });
+        artCtx.fillStyle = color;
+        artCtx.fill();
+        artCtx.strokeStyle = color;
+        artCtx.lineWidth = 0.5;
+        artCtx.stroke();
+    });
+
+    // Draw complex items (images, subdivided)
+    complexItems.forEach(({ r, c, data }) => {
+        drawTriangle(r, c, data, triHeight, W_half);
     });
 
     if (config.showGrid) {

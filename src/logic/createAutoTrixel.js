@@ -1044,18 +1044,23 @@ export function createAutoTrixel(rootElement) {
     }
 
     function resetCanvas() {
-        pushToHistory(saveStateForUndo());
-        gridData = {};
-        bgImage = {
-            img: null,
-            x: 0,
-            y: 0,
-            scale: 1,
-            opacity: 0.5,
-        };
-        fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
-        notifyBgChange();
-        showToast("Canvas & Background Cleared");
+        try {
+            pushToHistory(saveStateForUndo());
+            gridData = {};
+            bgImage = {
+                img: null,
+                x: 0,
+                y: 0,
+                scale: 1,
+                opacity: 0.5,
+            };
+            fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
+            notifyBgChange();
+            showToast("Canvas & Background Cleared");
+        } catch (e) {
+            console.error("Reset Canvas Failed:", e);
+            showToast("Error Clearing Canvas");
+        }
     }
 
     function setBackgroundImage(file) {
