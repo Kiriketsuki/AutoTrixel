@@ -56,3 +56,12 @@ export function oklchToRgb(l, c, h) {
 export function inGamut(r, g, b) {
     return r >= 0 && r <= 1 && g >= 0 && g <= 1 && b >= 0 && b <= 1;
 }
+
+export function oklchToHex(l, c, h) {
+    const { r, g, b } = oklchToRgb(l, c, h);
+    const toHex = (n) => {
+        const hex = Math.round(clamp(n, 0, 1) * 255).toString(16);
+        return hex.length === 1 ? "0" + hex : hex;
+    };
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
