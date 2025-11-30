@@ -1,0 +1,189 @@
+<script setup>
+    import { ref } from "vue";
+    import ControlSection from "./ControlSection.vue";
+
+    const props = defineProps({
+        autoTrixelInstance: Object,
+    });
+
+    const fileInput = ref(null);
+    const images = ref([]);
+
+    const triggerUpload = () => {
+        fileInput.value.click();
+    };
+
+    const handleFileChange = (event) => {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const id = `img_${Date.now()}`;
+                    const imageData = {
+                        id,
+                        src: e.target.result,
+                        element: img,
+                    };
+                    images.value.push(imageData);
+                    selectImage(imageData);
+
+                    if (props.autoTrixelInstance) {
+                        props.autoTrixelInstance.registerImage(id, img);
+                    }
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+        event.target.value = "";
+    };
+
+    const selectImage = (image) => {
+        if (props.autoTrixelInstance) {
+            props.autoTrixelInstance.setCurrentImage(image);
+        }
+    };
+
+    const clearImages = () => {
+        images.value = [];
+        if (fileInput.value) {
+            fileInput.value.value = "";
+        }
+    };
+
+    const removeImage = (index) => {
+        images.value.splice(index, 1);
+        if (images.value.length === 0 && fileInput.value) {
+            fileInput.value.value = "";
+        }
+    };
+</script>
+
+<template>
+    <ControlSection title="Paint Editor">
+        <div class="flex gap-2.5 items-center">
+            <div
+                id="colorPreviewBox"
+                class="w-10 h-10 rounded-md border-2 border-black-light bg-primary"></div>
+            <div
+                id="colorCodeDisplay"
+                class="flex-1 font-mono text-xs text-white-dark">
+                #00d2ff
+            </div>
+        </div>
+
+        <div class="flex flex-col gap-0.5">
+            <span class="text-xs text-white-dark">Lightness (L)</span>
+            <input
+                type="range"
+                id="lInput"
+                min="0"
+                max="100"
+                value="60"
+                class="flex-1 h-1 accent-primary hover:accent-tertiary transition-colors duration-200 w-full" />
+        </div>
+        <div class="flex flex-col gap-0.5">
+            <span class="text-xs text-white-dark">Chroma (C)</span>
+            <input
+                type="range"
+                id="cInput"
+                min="0"
+                max="0.37"
+                step="0.01"
+                value="0.15"
+                class="flex-1 h-1 accent-primary hover:accent-tertiary transition-colors duration-200 w-full" />
+        </div>
+        <div class="flex flex-col gap-0.5">
+            <span class="text-xs text-white-dark">Hue (H)</span>
+            <input
+                type="range"
+                id="hInput"
+                min="0"
+                max="360"
+                value="200"
+                class="flex-1 h-1 accent-primary hover:accent-tertiary transition-colors duration-200 w-full" />
+        </div>
+
+        <div style="margin-top: 5px">
+            <label class="text-xs text-white-dark font-semibold flex justify-between items-center mb-1.5">Quick Palette</label>
+            <div
+                class="grid grid-cols-5 gap-1.5 mt-1.5"
+                id="palette"></div>
+        </div>
+
+        <div class="mt-4 border-t border-black-light pt-3">
+            <h3 class="m-0 mb-1.5 text-white-dark text-xs font-semibold flex justify-between items-center">
+                Image Fill
+                <div class="flex gap-1">
+                    <button
+                        v-if="images.length > 0"
+                        @click="clearImages"
+                        class="bg-red-900 hover:bg-red-800 text-white border border-red-900 px-2 py-0.5 rounded text-xs cursor-pointer transition-colors">
+                        Clear
+                    </button>
+                    <button
+                        @click="triggerUpload"
+                        class="bg-black hover:bg-black-light text-white border border-black-light px-2 py-0.5 rounded text-xs cursor-pointer transition-colors">
+                        + Upload
+                    </button>
+                </div>
+            </h3>
+
+            <input
+                type="file"
+                ref="fileInput"
+                class="hidden"
+                accept="image/*"
+                @change="handleFileChange" />
+
+            <div
+                v-if="images.length === 0"
+                class="text-white-dark italic text-center py-2 text-xs">
+                No images uploaded
+            </div>
+
+            <div
+                v-else
+                class="grid grid-cols-4 gap-1 overflow-y-auto custom-scrollbar mt-2">
+                <div
+                    v-for="(img, index) in images"
+                    :key="img.id"
+                    class="aspect-square border border-black-light rounded overflow-hidden cursor-pointer hover:border-primary relative group"
+                    @click="selectImage(img)">
+                    <img
+                        :src="img.src"
+                        class="w-full h-full object-cover" />
+                    <button
+                        @click.stop="removeImage(index)"
+                        class="absolute top-0.5 right-0.5 w-4 h-4 bg-black/50 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">
+                        ✕
+                    </button>
+                </div>
+            </div>
+        </div>
+    </ControlSection>
+</template>
+
+<style scoped>
+    @reference "../style.css";
+
+    :deep(.swatch) {
+        @apply w-full aspect-square rounded cursor-pointer border-2 border-transparent transition-transform duration-100 hover:scale-110 hover:z-10;
+    }
+    :deep(.swatch.selected) {
+        @apply border-white ring-2 ring-primary;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.1);
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 2px;
+    }
+</style>

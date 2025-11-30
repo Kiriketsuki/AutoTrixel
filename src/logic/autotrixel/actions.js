@@ -1,12 +1,20 @@
 import { pixelToGrid, findBestCenter, getTriangleCluster } from "./geometry.js";
 
-export function batchPaintCells(cells, currentTool, gridData, currentCssColor) {
+function areColorsEqual(c1, c2) {
+    if (c1 === c2) return true;
+    if (typeof c1 === "object" && typeof c2 === "object" && c1 !== null && c2 !== null) {
+        return c1.type === c2.type && c1.imageId === c2.imageId;
+    }
+    return false;
+}
+
+export function batchPaintCells(cells, currentTool, gridData, currentFill) {
     let didChange = false;
     cells.forEach((cell) => {
         const key = `${cell.r},${cell.c}`;
         if (currentTool === "pencil") {
-            if (gridData[key] !== currentCssColor) {
-                gridData[key] = currentCssColor;
+            if (!areColorsEqual(gridData[key], currentFill)) {
+                gridData[key] = currentFill;
                 didChange = true;
             }
         } else if (currentTool === "eraser") {
@@ -23,7 +31,7 @@ export function fillBucket(startR, startC, fillCol, gridData, config) {
     const startKey = `${startR},${startC}`;
     const targetColor = gridData[startKey];
 
-    if (targetColor === fillCol) return false;
+    if (areColorsEqual(targetColor, fillCol)) return false;
 
     const queue = [{ r: startR, c: startC }];
     const visited = new Set();
@@ -40,7 +48,7 @@ export function fillBucket(startR, startC, fillCol, gridData, config) {
         if (visited.has(key)) continue;
         visited.add(key);
 
-        if (gridData[key] !== targetColor) continue;
+        if (!areColorsEqual(gridData[key], targetColor)) continue;
 
         gridData[key] = fillCol;
         changed = true;

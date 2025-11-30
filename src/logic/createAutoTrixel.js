@@ -103,6 +103,8 @@ export function createAutoTrixel(rootElement) {
 
     let colorState = { l: 0.6, c: 0.15, h: 200 };
     let currentCssColor = "oklch(60% 0.15 200)";
+    let currentFill = currentCssColor; // Can be string (color) or object { type: 'image', imageId: '...', ... }
+    const imageRegistry = new Map(); // id -> HTMLImageElement
 
     let triHeight;
     let W_half;
@@ -135,8 +137,7 @@ export function createAutoTrixel(rootElement) {
 
         canvasStack.style.width = `${w}px`;
         canvasStack.style.height = `${h}px`;
-
-        fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
+        fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
     }
 
     function updateCanvasTransform() {
@@ -171,7 +172,7 @@ export function createAutoTrixel(rootElement) {
         }
         const previousState = historyQueue.pop();
         gridData = JSON.parse(previousState);
-        fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
+        fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
         updateUndoButton();
         showToast("Undo");
     }
@@ -183,6 +184,9 @@ export function createAutoTrixel(rootElement) {
 
     function updateColorUI(cssString) {
         currentCssColor = cssString;
+        currentFill = cssString; // Switch back to color mode
+        colorPreviewBox.style.backgroundColor = cssString;
+        colorPreviewBox.style.backgroundImage = "none";
         colorPreviewBox.style.backgroundColor = cssString;
         lInput.value = Math.round(colorState.l * 100);
         cInput.value = colorState.c;
@@ -281,10 +285,15 @@ export function createAutoTrixel(rootElement) {
             return data;
         }
 
+        // Prevent subdivision of images for now
+        if (tool === "subdivide" && data && data.type === "image") {
+            return data;
+        }
+
         const vertices = getTriangleVertices(r, c, triHeight, W_half);
 
         const updateRecursive = (node, p, v0, v1, v2) => {
-            if (typeof node === "string" || !node) {
+            if (!node || typeof node !== "object" || !node.subdivided) {
                 if (tool === "subdivide") {
                     const baseColor = node || null;
                     return {
@@ -345,7 +354,7 @@ export function createAutoTrixel(rootElement) {
 
         if (currentTool === "bucket") {
             const cell = hoveredCells[0];
-            didChange = fillBucket(cell.r, cell.c, currentCssColor, gridData, config);
+            didChange = fillBucket(cell.r, cell.c, currentFill, gridData, config);
         } else if (currentTool === "picker") {
             const cell = hoveredCells[0];
             const key = `${cell.r},${cell.c}`;
@@ -428,7 +437,7 @@ export function createAutoTrixel(rootElement) {
                 const cell = hoveredCells[0];
                 const key = `${cell.r},${cell.c}`;
                 const p = { x: lastMouseX, y: lastMouseY };
-                const newData = processSubdivision(gridData, key, p, cell.r, cell.c, currentTool, currentCssColor, triHeight, W_half);
+                const newData = processSubdivision(gridData, key, p, cell.r, cell.c, currentTool, currentFill, triHeight, W_half);
                 if (JSON.stringify(gridData[key]) !== JSON.stringify(newData)) {
                     gridData[key] = newData;
                     didChange = true;
@@ -444,13 +453,13 @@ export function createAutoTrixel(rootElement) {
                         }
                     });
                 } else {
-                    didChange = batchPaintCells(hoveredCells, currentTool, gridData, currentCssColor);
+                    didChange = batchPaintCells(hoveredCells, currentTool, gridData, currentFill);
                 }
             }
         }
 
         if (didChange) {
-            fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
+            fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
         }
         return didChange;
     }
@@ -524,7 +533,7 @@ export function createAutoTrixel(rootElement) {
                 const dy = e.clientY - bgPanStartY;
                 bgImage.x = startBgX + dx;
                 bgImage.y = startBgY + dy;
-                fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
+                fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
                 notifyBgChange();
                 return;
             }
@@ -590,14 +599,14 @@ export function createAutoTrixel(rootElement) {
                         const c = pixelToGrid(px, py, triHeight, W_half, config);
                         if (c) {
                             const key = `${c.r},${c.c}`;
-                            const newData = processSubdivision(gridData, key, { x: px, y: py }, c.r, c.c, currentTool, currentCssColor, triHeight, W_half);
+                            const newData = processSubdivision(gridData, key, { x: px, y: py }, c.r, c.c, currentTool, currentFill, triHeight, W_half);
                             if (JSON.stringify(gridData[key]) !== JSON.stringify(newData)) {
                                 gridData[key] = newData;
                                 didChange = true;
                             }
                         }
                     }
-                    if (didChange) fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
+                    if (didChange) fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
                 } else {
                     const cellsToPaint = interpolateStroke(lastMouseX, lastMouseY, x, y, currentTool, config, triHeight, W_half);
                     if (cellsToPaint.length > 0) {
@@ -612,10 +621,10 @@ export function createAutoTrixel(rootElement) {
                                     didChange = true;
                                 }
                             });
-                            if (didChange) fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
+                            if (didChange) fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
                         } else {
-                            const didChange = batchPaintCells(cellsToPaint, currentTool, gridData, currentCssColor);
-                            if (didChange) fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
+                            const didChange = batchPaintCells(cellsToPaint, currentTool, gridData, currentFill);
+                            if (didChange) fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
                         }
                     }
                 }
@@ -759,14 +768,14 @@ export function createAutoTrixel(rootElement) {
                                 const c = pixelToGrid(px, py, triHeight, W_half, config);
                                 if (c) {
                                     const key = `${c.r},${c.c}`;
-                                    const newData = processSubdivision(gridData, key, { x: px, y: py }, c.r, c.c, currentTool, currentCssColor, triHeight, W_half);
+                                    const newData = processSubdivision(gridData, key, { x: px, y: py }, c.r, c.c, currentTool, currentFill, triHeight, W_half);
                                     if (JSON.stringify(gridData[key]) !== JSON.stringify(newData)) {
                                         gridData[key] = newData;
                                         didChange = true;
                                     }
                                 }
                             }
-                            if (didChange) fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
+                            if (didChange) fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
                         } else {
                             const cellsToPaint = interpolateStroke(lastMouseX, lastMouseY, x, y, currentTool, config, triHeight, W_half);
                             if (cellsToPaint.length > 0) {
@@ -781,10 +790,10 @@ export function createAutoTrixel(rootElement) {
                                             didChange = true;
                                         }
                                     });
-                                    if (didChange) fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
+                                    if (didChange) fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
                                 } else {
-                                    const didChange = batchPaintCells(cellsToPaint, currentTool, gridData, currentCssColor);
-                                    if (didChange) fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
+                                    const didChange = batchPaintCells(cellsToPaint, currentTool, gridData, currentFill);
+                                    if (didChange) fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
                                 }
                             }
                         }
@@ -841,22 +850,22 @@ export function createAutoTrixel(rootElement) {
                     if (e.key === "ArrowUp") {
                         e.preventDefault();
                         bgImage.y -= 10;
-                        fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
+                        fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
                         notifyBgChange();
                     } else if (e.key === "ArrowDown") {
                         e.preventDefault();
                         bgImage.y += 10;
-                        fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
+                        fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
                         notifyBgChange();
                     } else if (e.key === "ArrowLeft") {
                         e.preventDefault();
                         bgImage.x -= 10;
-                        fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
+                        fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
                         notifyBgChange();
                     } else if (e.key === "ArrowRight") {
                         e.preventDefault();
                         bgImage.x += 10;
-                        fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
+                        fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
                         notifyBgChange();
                     }
                 } else {
@@ -895,7 +904,7 @@ export function createAutoTrixel(rootElement) {
                         // Ctrl + Alt + Scroll -> BG Scale
                         const delta = e.deltaY < 0 ? 0.1 : -0.1;
                         bgImage.scale = clamp(bgImage.scale + delta, 0.1, 5);
-                        fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
+                        fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
                         notifyBgChange();
                         showToast(`BG Scale: ${bgImage.scale.toFixed(2)}`);
                     } else {
@@ -944,7 +953,7 @@ export function createAutoTrixel(rootElement) {
 
         gridToggle.addEventListener("change", (e) => {
             config.showGrid = e.target.checked;
-            fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
+            fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
         });
 
         gridColorPicker.addEventListener("input", (e) => {
@@ -955,12 +964,12 @@ export function createAutoTrixel(rootElement) {
                 color = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
             }
             config.gridColor = color;
-            fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
+            fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
         });
 
         gridStyleSelect.addEventListener("change", (e) => {
             config.gridStyle = e.target.value;
-            fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
+            fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
         });
 
         gridThicknessSlider.addEventListener("input", (e) => {
@@ -968,19 +977,19 @@ export function createAutoTrixel(rootElement) {
             val = clamp(val, 0.1, 1.5);
             config.gridThickness = val;
             gridThicknessVal.innerText = val;
-            fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
+            fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
         });
 
         gridOpacitySlider.addEventListener("input", (e) => {
             const val = parseFloat(e.target.value);
             config.gridOpacity = val;
             gridOpacityVal.innerText = val;
-            fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
+            fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
         });
 
         subGridStyleSelect.addEventListener("change", (e) => {
             config.subGridStyle = e.target.value;
-            fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
+            fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
         });
 
         subGridThicknessSlider.addEventListener("input", (e) => {
@@ -988,19 +997,19 @@ export function createAutoTrixel(rootElement) {
             val = clamp(val, 0.1, 1.5);
             config.subGridThickness = val;
             subGridThicknessVal.innerText = val;
-            fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
+            fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
         });
 
         subGridOpacitySlider.addEventListener("input", (e) => {
             const val = parseFloat(e.target.value);
             config.subGridOpacity = val;
             subGridOpacityVal.innerText = val;
-            fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
+            fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
         });
 
         subGridToggle.addEventListener("change", (e) => {
             config.showSubGrid = e.target.checked;
-            fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
+            fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
         });
 
         subGridColorPicker.addEventListener("input", (e) => {
@@ -1011,7 +1020,7 @@ export function createAutoTrixel(rootElement) {
                 color = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
             }
             config.subGridColor = color;
-            fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
+            fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
         });
 
         lInput.addEventListener("input", updateColorFromSliders);
@@ -1035,18 +1044,23 @@ export function createAutoTrixel(rootElement) {
     }
 
     function resetCanvas() {
-        pushToHistory(saveStateForUndo());
-        gridData = {};
-        bgImage = {
-            img: null,
-            x: 0,
-            y: 0,
-            scale: 1,
-            opacity: 0.5,
-        };
-        fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
-        notifyBgChange();
-        showToast("Canvas & Background Cleared");
+        try {
+            pushToHistory(saveStateForUndo());
+            gridData = {};
+            bgImage = {
+                img: null,
+                x: 0,
+                y: 0,
+                scale: 1,
+                opacity: 0.5,
+            };
+            fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
+            notifyBgChange();
+            showToast("Canvas & Background Cleared");
+        } catch (e) {
+            console.error("Reset Canvas Failed:", e);
+            showToast("Error Clearing Canvas");
+        }
     }
 
     function setBackgroundImage(file) {
@@ -1059,7 +1073,7 @@ export function createAutoTrixel(rootElement) {
                 bgImage.x = 0;
                 bgImage.y = 0;
                 bgImage.scale = 1;
-                fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
+                fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
                 notifyBgChange();
                 showToast("Background Image Loaded");
             };
@@ -1073,7 +1087,7 @@ export function createAutoTrixel(rootElement) {
         if (props.y !== undefined) bgImage.y = props.y;
         if (props.scale !== undefined) bgImage.scale = props.scale;
         if (props.opacity !== undefined) bgImage.opacity = props.opacity;
-        fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
+        fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
     }
 
     function setControlMode(mode) {
@@ -1092,30 +1106,54 @@ export function createAutoTrixel(rootElement) {
         }
     }
 
+    function registerImage(id, imgElement) {
+        imageRegistry.set(id, imgElement);
+    }
+
+    function setCurrentImage(imageData) {
+        if (!imageRegistry.has(imageData.id)) {
+            registerImage(imageData.id, imageData.element);
+        }
+        currentFill = {
+            type: "image",
+            imageId: imageData.id,
+            src: imageData.src,
+        };
+
+        colorPreviewBox.style.backgroundColor = "transparent";
+        colorPreviewBox.style.backgroundImage = `url(${imageData.src})`;
+        colorPreviewBox.style.backgroundSize = "cover";
+        colorPreviewBox.style.backgroundPosition = "center";
+        colorCodeDisplay.innerText = "Image";
+
+        if (currentTool === "eraser" || currentTool === "picker" || currentTool === "subdivide") {
+            setTool("pencil");
+        }
+    }
+
     function init() {
         updateDimensions();
-        setupPalette();
         setupEvents();
-        fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage);
-        updateColorFromSliders();
+        setupPalette();
         updateUndoButton();
+        updateColorUI(currentCssColor);
+
+        fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
     }
 
     init();
 
     return {
-        setTool,
-        undoAction,
+        select,
+        updateDimensions,
         resetCanvas,
-        setBackgroundImage,
-        updateBackground,
-        setControlMode,
-        onBgChange,
-        exportImage: () => exportImage(artCanvas, gridData, config, triHeight, W_half, exportGridToggle, showToast),
+        exportImage: () => exportImage(artCanvas, gridData, config, triHeight, W_half, exportGridToggle, showToast, imageRegistry),
         exportSVG: () => exportSVG(artCanvas, gridData, config, triHeight, W_half, exportGridToggle, showToast),
         destroy: () => {
             windowListeners.forEach((dispose) => dispose());
             windowListeners.length = 0;
         },
+        registerImage,
+        setCurrentImage,
     };
 }
