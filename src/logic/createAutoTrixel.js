@@ -38,7 +38,7 @@ export function createAutoTrixel(rootElement) {
     const hInput = select("#hInput");
     const colorPreviewBox = select("#colorPreviewBox");
     const colorCodeDisplay = select("#colorCodeDisplay");
-    const paletteContainer = select("#palette");
+    // Palette is now handled in Vue
     const scaleSlider = select("#scaleSlider");
     const scaleNumber = select("#scaleNumber");
     const widthSlider = select("#widthSlider");
@@ -1028,22 +1028,7 @@ export function createAutoTrixel(rootElement) {
         hInput.addEventListener("input", updateColorFromSliders);
     }
 
-    let currentPalette = ["#ff0000", "#ff8800", "#ffee00", "#00cc00", "#0099ff", "#0000ff", "#cc00ff", "#ffffff", "#888888", "#000000", "#550000", "#553300", "#555500", "#003300", "#003355"];
-
-    function setupPalette(colors = currentPalette) {
-        currentPalette = colors;
-        paletteContainer.innerHTML = "";
-        colors.forEach((c) => {
-            const div = document.createElement("div");
-            div.className = "swatch";
-            div.style.backgroundColor = c;
-            div.addEventListener("click", () => {
-                syncColorFromHex(c);
-                showToast("Palette Color Selected");
-            });
-            paletteContainer.appendChild(div);
-        });
-    }
+    // Palette logic moved to Vue component
 
     function resetCanvas() {
         try {
@@ -1136,7 +1121,9 @@ export function createAutoTrixel(rootElement) {
     function init() {
         updateDimensions();
         setupEvents();
-        setupPalette();
+        setupEvents();
+        // setupPalette(); // Moved to Vue
+        updateUndoButton();
         updateUndoButton();
         updateColorUI(currentCssColor);
 
@@ -1157,7 +1144,24 @@ export function createAutoTrixel(rootElement) {
         },
         registerImage,
         setCurrentImage,
-        updatePalette: setupPalette,
-        getPalette: () => currentPalette,
+        setCurrentImage,
+        // updatePalette: setupPalette, // Moved to Vue
+        // getPalette: () => currentPalette, // Moved to Vue
+        onBgChange,
+        onBgChange,
+        updateBackground,
+        setControlMode,
+        setColor: (l, c, h) => {
+            colorState = { l, c, h };
+            const cssStr = `oklch(${Math.round(l * 100)}% ${c} ${Math.round(h)})`;
+            updateColorUI(cssStr);
+        },
+        onColorChange: (cb) => {
+            const originalUpdateColorUI = updateColorUI;
+            updateColorUI = (cssString) => {
+                originalUpdateColorUI(cssString);
+                cb(colorState);
+            };
+        },
     };
 }
