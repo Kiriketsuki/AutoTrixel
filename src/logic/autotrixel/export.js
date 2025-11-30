@@ -1,7 +1,7 @@
 import { getTrianglePath, getTriangleVertices } from "./geometry.js";
 import { drawGridLines } from "./drawing.js";
 
-export function exportImage(artCanvas, gridData, config, triHeight, W_half, exportGridToggle, showToast, imageRegistry) {
+export function exportImage(artCanvas, gridData, config, triHeight, W_half, exportGridToggle, showToast, imageRegistry, name) {
     const tempCanvas = document.createElement("canvas");
     tempCanvas.width = artCanvas.width;
     tempCanvas.height = artCanvas.height;
@@ -106,7 +106,8 @@ export function exportImage(artCanvas, gridData, config, triHeight, W_half, expo
         if (!blob) return;
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
-        link.download = "tripixel-art.png";
+        const filename = name ? `${name}.png` : "tripixel-art.png";
+        link.download = filename;
         link.href = url;
         link.click();
         setTimeout(() => URL.revokeObjectURL(url), 100);
@@ -114,7 +115,7 @@ export function exportImage(artCanvas, gridData, config, triHeight, W_half, expo
     }, "image/png");
 }
 
-export function exportSVG(artCanvas, gridData, config, triHeight, W_half, exportGridToggle, showToast) {
+export function exportSVG(artCanvas, gridData, config, triHeight, W_half, exportGridToggle, showToast, name) {
     const w = artCanvas.width;
     const h = artCanvas.height;
     let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">`;
@@ -198,7 +199,8 @@ export function exportSVG(artCanvas, gridData, config, triHeight, W_half, export
     const blob = new Blob([svg], { type: "image/svg+xml" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.download = "tripixel-art.svg";
+    const filename = name ? `${name}.svg` : "tripixel-art.svg";
+    link.download = filename;
     link.href = url;
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 100);

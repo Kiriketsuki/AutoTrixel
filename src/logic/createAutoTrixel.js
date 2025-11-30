@@ -1136,8 +1136,8 @@ export function createAutoTrixel(rootElement) {
         select,
         updateDimensions,
         resetCanvas,
-        exportImage: () => exportImage(artCanvas, gridData, config, triHeight, W_half, exportGridToggle, showToast, imageRegistry),
-        exportSVG: () => exportSVG(artCanvas, gridData, config, triHeight, W_half, exportGridToggle, showToast),
+        exportImage: (name) => exportImage(artCanvas, gridData, config, triHeight, W_half, exportGridToggle, showToast, imageRegistry, name),
+        exportSVG: (name) => exportSVG(artCanvas, gridData, config, triHeight, W_half, exportGridToggle, showToast, name),
         destroy: () => {
             windowListeners.forEach((dispose) => dispose());
             windowListeners.length = 0;
