@@ -230,8 +230,12 @@
         </div>
 
         <div style="margin-top: 5px">
-            <label class="text-xs text-white-dark font-semibold flex justify-between items-center mb-1.5">
-                {{ paletteName }}
+            <div class="flex justify-between items-center mb-1.5">
+                <input
+                    v-model="paletteName"
+                    type="text"
+                    class="bg-black border border-black-light text-white-dark px-2 py-1 rounded text-xs focus:outline-none focus:border-primary focus:text-white transition-colors w-full mr-2"
+                    placeholder="Palette Name" />
                 <div class="flex gap-1">
                     <button
                         @click="exportPalette"
@@ -246,7 +250,7 @@
                         Import
                     </button>
                 </div>
-            </label>
+            </div>
             <input
                 type="file"
                 ref="paletteFileInput"

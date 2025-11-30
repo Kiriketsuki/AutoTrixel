@@ -24,6 +24,7 @@
     const emit = defineEmits(["updateBg", "setControlMode"]);
 
     const isOpen = ref(true);
+    const artworkName = ref("tripixel-art");
 
     const toggleSidebar = () => {
         isOpen.value = !isOpen.value;
@@ -34,11 +35,11 @@
     };
 
     const exportImage = () => {
-        props.autoTrixelInstance?.exportImage();
+        props.autoTrixelInstance?.exportImage(artworkName.value);
     };
 
     const exportSVG = () => {
-        props.autoTrixelInstance?.exportSVG();
+        props.autoTrixelInstance?.exportSVG(artworkName.value);
     };
 
     const updateBg = (prop, val) => {
@@ -110,17 +111,24 @@
                 @click="resetCanvas">
                 Clear Canvas
             </button>
-            <div class="flex gap-2">
-                <button
-                    class="bg-primary text-white border-none hover:bg-primary-light p-2.5 rounded-md cursor-pointer font-semibold transition-colors duration-200 mt-1.5 flex-1"
-                    @click="exportImage">
-                    PNG
-                </button>
-                <button
-                    class="bg-primary text-white border-none hover:bg-primary-light p-2.5 rounded-md cursor-pointer font-semibold transition-colors duration-200 mt-1.5 flex-1"
-                    @click="exportSVG">
-                    SVG
-                </button>
+            <div class="flex flex-col gap-1.5 mt-1.5">
+                <input
+                    v-model="artworkName"
+                    type="text"
+                    class="bg-black border border-black-light text-white-dark p-2 rounded text-xs focus:outline-none focus:border-primary focus:text-white transition-colors"
+                    placeholder="Artwork Name" />
+                <div class="flex gap-2">
+                    <button
+                        class="bg-primary text-white border-none hover:bg-primary-light p-2.5 rounded-md cursor-pointer font-semibold transition-colors duration-200 flex-1"
+                        @click="exportImage">
+                        PNG
+                    </button>
+                    <button
+                        class="bg-primary text-white border-none hover:bg-primary-light p-2.5 rounded-md cursor-pointer font-semibold transition-colors duration-200 flex-1"
+                        @click="exportSVG">
+                        SVG
+                    </button>
+                </div>
             </div>
         </div>
     </div>
