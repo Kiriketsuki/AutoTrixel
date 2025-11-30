@@ -27,3 +27,32 @@ export function hexToOklchVals(hex) {
 
     return { l: L, c: C, h: H };
 }
+
+export function oklchToRgb(l, c, h) {
+    const L = l;
+    const a = c * Math.cos((h * Math.PI) / 180);
+    const b = c * Math.sin((h * Math.PI) / 180);
+
+    const l_ = L + 0.3963377774 * a + 0.2158037573 * b;
+    const m_ = L - 0.1055613458 * a - 0.0638541728 * b;
+    const s_ = L - 0.0894841775 * a - 1.291485548 * b;
+
+    const l__ = l_ * l_ * l_;
+    const m__ = m_ * m_ * m_;
+    const s__ = s_ * s_ * s_;
+
+    let r = 4.0767416621 * l__ - 3.3077115913 * m__ + 0.2309699292 * s__;
+    let g = -1.2684380046 * l__ + 2.6097574011 * m__ - 0.3413193965 * s__;
+    let bl = -0.0041960863 * l__ - 0.7034186147 * m__ + 1.707614701 * s__;
+
+    // sRGB transfer function
+    r = r > 0.0031308 ? 1.055 * Math.pow(r, 1 / 2.4) - 0.055 : 12.92 * r;
+    g = g > 0.0031308 ? 1.055 * Math.pow(g, 1 / 2.4) - 0.055 : 12.92 * g;
+    bl = bl > 0.0031308 ? 1.055 * Math.pow(bl, 1 / 2.4) - 0.055 : 12.92 * bl;
+
+    return { r, g, b: bl };
+}
+
+export function inGamut(r, g, b) {
+    return r >= 0 && r <= 1 && g >= 0 && g <= 1 && b >= 0 && b <= 1;
+}

@@ -1159,5 +1159,20 @@ export function createAutoTrixel(rootElement) {
         setCurrentImage,
         updatePalette: setupPalette,
         getPalette: () => currentPalette,
+        onBgChange,
+        updateBackground,
+        setControlMode,
+        setColor: (l, c, h) => {
+            colorState = { l, c, h };
+            const cssStr = `oklch(${Math.round(l * 100)}% ${c} ${Math.round(h)})`;
+            updateColorUI(cssStr);
+        },
+        onColorChange: (cb) => {
+            const originalUpdateColorUI = updateColorUI;
+            updateColorUI = (cssString) => {
+                originalUpdateColorUI(cssString);
+                cb(colorState);
+            };
+        },
     };
 }

@@ -1,6 +1,7 @@
 <script setup>
-    import { ref } from "vue";
+    import { ref, onMounted, onBeforeUnmount, watch } from "vue";
     import ControlSection from "./ControlSection.vue";
+    import OklchPicker from "./OklchPicker.vue";
 
     import { parseGPL, generateGPL } from "../logic/palette-utils.js";
 
@@ -12,6 +13,48 @@
     const paletteFileInput = ref(null);
     const images = ref([]);
     const paletteName = ref("Quick Palette");
+
+    const showColorPicker = ref(false);
+    const currentColor = ref({ l: 0.6, c: 0.15, h: 200 });
+    const pickerPosition = ref({ top: 0, left: 0 });
+    const triggerRef = ref(null);
+
+    const toggleColorPicker = () => {
+        if (!showColorPicker.value && triggerRef.value) {
+            const rect = triggerRef.value.getBoundingClientRect();
+            pickerPosition.value = {
+                top: rect.bottom + 8,
+                left: rect.left,
+            };
+        }
+        showColorPicker.value = !showColorPicker.value;
+    };
+
+    const closeColorPicker = () => {
+        showColorPicker.value = false;
+    };
+
+    const updateAppColor = (newColor) => {
+        currentColor.value = newColor;
+        if (props.autoTrixelInstance) {
+            props.autoTrixelInstance.setColor(newColor.l, newColor.c, newColor.h);
+        }
+    };
+
+    // Sync from app to local state (e.g. when picking color from canvas)
+    let colorChangeListener = null;
+    watch(
+        () => props.autoTrixelInstance,
+        (instance) => {
+            if (instance) {
+                colorChangeListener = (colorState) => {
+                    currentColor.value = { ...colorState };
+                };
+                instance.onColorChange(colorChangeListener);
+            }
+        },
+        { immediate: true },
+    );
 
     const triggerUpload = () => {
         fileInput.value.click();
@@ -112,10 +155,20 @@
 
 <template>
     <ControlSection title="Paint Editor">
-        <div class="flex gap-2.5 items-center">
+        <div class="flex gap-2.5 items-center relative">
             <div
                 id="colorPreviewBox"
-                class="w-10 h-10 rounded-md border-2 border-black-light bg-primary"></div>
+                ref="triggerRef"
+                @click="toggleColorPicker"
+                class="w-10 h-10 rounded-md border-2 border-black-light bg-primary cursor-pointer hover:border-white transition-colors"></div>
+
+            <OklchPicker
+                v-if="showColorPicker"
+                :modelValue="currentColor"
+                :position="pickerPosition"
+                @update:modelValue="updateAppColor"
+                @close="closeColorPicker" />
+
             <div
                 id="colorCodeDisplay"
                 class="flex-1 font-mono text-xs text-white-dark">
