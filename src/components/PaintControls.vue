@@ -45,6 +45,20 @@
             props.autoTrixelInstance.setCurrentImage(image);
         }
     };
+
+    const clearImages = () => {
+        images.value = [];
+        if (fileInput.value) {
+            fileInput.value.value = "";
+        }
+    };
+
+    const removeImage = (index) => {
+        images.value.splice(index, 1);
+        if (images.value.length === 0 && fileInput.value) {
+            fileInput.value.value = "";
+        }
+    };
 </script>
 
 <template>
@@ -102,11 +116,19 @@
         <div class="mt-4 border-t border-black-light pt-3">
             <h3 class="m-0 mb-1.5 text-white-dark text-xs font-semibold flex justify-between items-center">
                 Image Fill
-                <button
-                    @click="triggerUpload"
-                    class="bg-black hover:bg-black-light text-white border border-black-light px-2 py-0.5 rounded text-xs cursor-pointer transition-colors">
-                    + Upload
-                </button>
+                <div class="flex gap-1">
+                    <button
+                        v-if="images.length > 0"
+                        @click="clearImages"
+                        class="bg-red-900 hover:bg-red-800 text-white border border-red-900 px-2 py-0.5 rounded text-xs cursor-pointer transition-colors">
+                        Clear
+                    </button>
+                    <button
+                        @click="triggerUpload"
+                        class="bg-black hover:bg-black-light text-white border border-black-light px-2 py-0.5 rounded text-xs cursor-pointer transition-colors">
+                        + Upload
+                    </button>
+                </div>
             </h3>
 
             <input
@@ -126,13 +148,18 @@
                 v-else
                 class="grid grid-cols-4 gap-1 overflow-y-auto custom-scrollbar mt-2">
                 <div
-                    v-for="img in images"
+                    v-for="(img, index) in images"
                     :key="img.id"
                     class="aspect-square border border-black-light rounded overflow-hidden cursor-pointer hover:border-primary relative group"
                     @click="selectImage(img)">
                     <img
                         :src="img.src"
                         class="w-full h-full object-cover" />
+                    <button
+                        @click.stop="removeImage(index)"
+                        class="absolute top-0.5 right-0.5 w-4 h-4 bg-black/50 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">
+                        ✕
+                    </button>
                 </div>
             </div>
         </div>
