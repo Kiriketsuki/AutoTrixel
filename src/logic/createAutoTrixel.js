@@ -1028,8 +1028,10 @@ export function createAutoTrixel(rootElement) {
         hInput.addEventListener("input", updateColorFromSliders);
     }
 
-    function setupPalette() {
-        const colors = ["#ff0000", "#ff8800", "#ffee00", "#00cc00", "#0099ff", "#0000ff", "#cc00ff", "#ffffff", "#888888", "#000000", "#550000", "#553300", "#555500", "#003300", "#003355"];
+    let currentPalette = ["#ff0000", "#ff8800", "#ffee00", "#00cc00", "#0099ff", "#0000ff", "#cc00ff", "#ffffff", "#888888", "#000000", "#550000", "#553300", "#555500", "#003300", "#003355"];
+
+    function setupPalette(colors = currentPalette) {
+        currentPalette = colors;
         paletteContainer.innerHTML = "";
         colors.forEach((c) => {
             const div = document.createElement("div");
@@ -1155,5 +1157,7 @@ export function createAutoTrixel(rootElement) {
         },
         registerImage,
         setCurrentImage,
+        updatePalette: setupPalette,
+        getPalette: () => currentPalette,
     };
 }

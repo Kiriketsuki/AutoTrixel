@@ -2,15 +2,23 @@
     import { ref } from "vue";
     import ControlSection from "./ControlSection.vue";
 
+    import { parseGPL, generateGPL } from "../logic/palette-utils.js";
+
     const props = defineProps({
         autoTrixelInstance: Object,
     });
 
     const fileInput = ref(null);
+    const paletteFileInput = ref(null);
     const images = ref([]);
+    const paletteName = ref("Quick Palette");
 
     const triggerUpload = () => {
         fileInput.value.click();
+    };
+
+    const triggerPaletteUpload = () => {
+        paletteFileInput.value.click();
     };
 
     const handleFileChange = (event) => {
@@ -38,6 +46,47 @@
             reader.readAsDataURL(file);
         }
         event.target.value = "";
+    };
+
+    const handlePaletteFileChange = (event) => {
+        const file = event.target.files[0];
+        if (file) {
+            // Sanitize filename: remove extension, replace non-alphanumeric with space, trim
+            let name = file.name
+                .replace(/\.[^/.]+$/, "")
+                .replace(/[^a-zA-Z0-9]/g, " ")
+                .trim();
+            // Title Case: Capitalize first letter of each word
+            name = name
+                .split(/\s+/)
+                .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+                .join(" ");
+            paletteName.value = name || "Imported Palette";
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const colors = parseGPL(e.target.result);
+                if (props.autoTrixelInstance) {
+                    props.autoTrixelInstance.updatePalette(colors);
+                }
+            };
+            reader.readAsText(file);
+        }
+        event.target.value = "";
+    };
+
+    const exportPalette = () => {
+        if (props.autoTrixelInstance) {
+            const colors = props.autoTrixelInstance.getPalette();
+            const content = generateGPL(colors, paletteName.value);
+            const blob = new Blob([content], { type: "text/plain" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `${paletteName.value.replace(/\s+/g, "_").toLowerCase()}.gpl`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
     };
 
     const selectImage = (image) => {
@@ -107,7 +156,29 @@
         </div>
 
         <div style="margin-top: 5px">
-            <label class="text-xs text-white-dark font-semibold flex justify-between items-center mb-1.5">Quick Palette</label>
+            <label class="text-xs text-white-dark font-semibold flex justify-between items-center mb-1.5">
+                {{ paletteName }}
+                <div class="flex gap-1">
+                    <button
+                        @click="exportPalette"
+                        class="bg-black hover:bg-black-light text-white border border-black-light px-2 py-0.5 rounded text-xs cursor-pointer transition-colors"
+                        title="Export .gpl">
+                        Export
+                    </button>
+                    <button
+                        @click="triggerPaletteUpload"
+                        class="bg-black hover:bg-black-light text-white border border-black-light px-2 py-0.5 rounded text-xs cursor-pointer transition-colors"
+                        title="Import .gpl">
+                        Import
+                    </button>
+                </div>
+            </label>
+            <input
+                type="file"
+                ref="paletteFileInput"
+                class="hidden"
+                accept=".gpl"
+                @change="handlePaletteFileChange" />
             <div
                 class="grid grid-cols-5 gap-1.5 mt-1.5"
                 id="palette"></div>

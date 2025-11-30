@@ -127,14 +127,14 @@
                     id="heightSlider"
                     min="100"
                     max="5000"
-                    value="800"
+                    value="1000"
                     class="flex-1 h-1 accent-primary hover:accent-tertiary transition-colors duration-200 w-full" />
                 <input
                     type="number"
                     id="heightNumber"
                     min="100"
                     max="5000"
-                    value="800"
+                    value="1000"
                     class="w-[60px] bg-black border border-black-light text-primary p-1 rounded font-inherit text-sm text-right focus:outline-none focus:border-primary" />
             </div>
         </div>
