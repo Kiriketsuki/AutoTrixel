@@ -2,8 +2,10 @@ export const REQUIRED_SELECTORS = ["#artLayer", "#cursorLayer", "#canvas-stack",
 
 export const DEFAULT_CONFIG = {
     triSide: 25,
+    width: 1000,
+    height: 1000,
     widthTriangles: 40,
-    heightTriangles: 30,
+    heightTriangles: 40,
     bgColor: "transparent",
     gridColor: "#C5C4BD",
     showGrid: true,

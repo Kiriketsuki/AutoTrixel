@@ -1,6 +1,6 @@
 <script setup>
     import { ref } from "vue";
-    import ColorControls from "./ColorControls.vue";
+    import PaintControls from "./PaintControls.vue";
     import GridControls from "./GridControls.vue";
     import BackgroundControls from "./BackgroundControls.vue";
     import ToolsControl from "./ToolsControl.vue";
@@ -87,13 +87,13 @@
             <div class="flex justify-between mb-1 border-b border-black-light pb-0.5 last:border-none last:m-0"><span>Zoom In/Out</span> <span class="bg-black px-1 py-0.5 rounded font-mono border border-black-light text-white-dark">Ctrl + + / -</span></div>
             <div class="flex justify-between mb-1 border-b border-black-light pb-0.5 last:border-none last:m-0"><span>Brush Size</span> <span class="bg-black px-1 py-0.5 rounded font-mono border border-black-light text-white-dark">Ctrl + [ / ]</span></div>
             <div class="flex justify-between mb-1 border-b border-black-light pb-0.5 last:border-none last:m-0"><span>Scroll/Zoom</span> <span class="bg-black px-1 py-0.5 rounded font-mono border border-black-light text-white-dark">Ctrl + Wheel</span></div>
-            <div class="flex justify-between mb-1 border-b border-black-light pb-0.5 last:border-none last:m-0"><span>BG Scale</span> <span class="bg-black px-1 py-0.5 rounded font-mono border border-black-light text-white-dark">Ctrl + Shift + Wheel</span></div>
-            <div class="flex justify-between mb-1 border-b border-black-light pb-0.5 last:border-none last:m-0"><span>BG Pan</span> <span class="bg-black px-1 py-0.5 rounded font-mono border border-black-light text-white-dark">Ctrl + Shift + Mid Drag</span></div>
+            <div class="flex justify-between mb-1 border-b border-black-light pb-0.5 last:border-none last:m-0"><span>BG Scale</span> <span class="bg-black px-1 py-0.5 rounded font-mono border border-black-light text-white-dark">Ctrl + Alt + Wheel</span></div>
+            <div class="flex justify-between mb-1 border-b border-black-light pb-0.5 last:border-none last:m-0"><span>BG Pan</span> <span class="bg-black px-1 py-0.5 rounded font-mono border border-black-light text-white-dark">Ctrl + Alt + Mid Drag</span></div>
         </div>
 
         <ToolsControl :autoTrixelInstance="autoTrixelInstance" />
 
-        <ColorControls :autoTrixelInstance="autoTrixelInstance" />
+        <PaintControls :autoTrixelInstance="autoTrixelInstance" />
 
         <BackgroundControls
             :autoTrixelInstance="autoTrixelInstance"

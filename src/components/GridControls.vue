@@ -100,41 +100,41 @@
         </div>
 
         <div class="flex flex-col gap-2">
-            <label class="text-xs text-white-dark font-semibold flex justify-between items-center">Grid Width</label>
+            <label class="text-xs text-white-dark font-semibold flex justify-between items-center">Canvas Width (px)</label>
             <div class="flex gap-2.5 items-center">
                 <input
                     type="range"
                     id="widthSlider"
-                    min="5"
-                    max="500"
-                    value="40"
+                    min="100"
+                    max="5000"
+                    value="1000"
                     class="flex-1 h-1 accent-primary hover:accent-tertiary transition-colors duration-200 w-full" />
                 <input
                     type="number"
                     id="widthNumber"
-                    min="5"
-                    max="500"
-                    value="40"
+                    min="100"
+                    max="5000"
+                    value="1000"
                     class="w-[60px] bg-black border border-black-light text-primary p-1 rounded font-inherit text-sm text-right focus:outline-none focus:border-primary" />
             </div>
         </div>
 
         <div class="flex flex-col gap-2">
-            <label class="text-xs text-white-dark font-semibold flex justify-between items-center">Grid Height</label>
+            <label class="text-xs text-white-dark font-semibold flex justify-between items-center">Canvas Height (px)</label>
             <div class="flex gap-2.5 items-center">
                 <input
                     type="range"
                     id="heightSlider"
-                    min="5"
-                    max="500"
-                    value="30"
+                    min="100"
+                    max="5000"
+                    value="1000"
                     class="flex-1 h-1 accent-primary hover:accent-tertiary transition-colors duration-200 w-full" />
                 <input
                     type="number"
                     id="heightNumber"
-                    min="5"
-                    max="500"
-                    value="30"
+                    min="100"
+                    max="5000"
+                    value="1000"
                     class="w-[60px] bg-black border border-black-light text-primary p-1 rounded font-inherit text-sm text-right focus:outline-none focus:border-primary" />
             </div>
         </div>
