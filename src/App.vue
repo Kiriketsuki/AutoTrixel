@@ -2,6 +2,7 @@
     import { onBeforeUnmount, onMounted, ref, shallowRef } from "vue";
     import { createAutoTrixel } from "./logic/createAutoTrixel";
     import Sidebar from "./components/Sidebar.vue";
+    import { initMenuHandler } from "./tauri/menu-handler.js";
 
     const appRoot = ref(null);
     const controlMode = ref("canvas"); // 'canvas' or 'background'
@@ -19,11 +20,16 @@
         autoTrixelInstance.value?.setControlMode(mode);
     };
 
-    onMounted(() => {
+    onMounted(async () => {
         autoTrixelInstance.value = createAutoTrixel(appRoot.value);
         autoTrixelInstance.value.onBgChange((newState) => {
             bgState.value = { ...newState };
         });
+
+        const isTauri = '__TAURI__' in window || '__TAURI_INTERNALS__' in window;
+        if (isTauri) {
+            await initMenuHandler(autoTrixelInstance.value);
+        }
     });
 
     onBeforeUnmount(() => {
