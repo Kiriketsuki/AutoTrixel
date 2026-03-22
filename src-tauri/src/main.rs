@@ -1,5 +1,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    trkixel_lib::run();
+    autotrixel_lib::run();
 }
