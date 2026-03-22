@@ -3,7 +3,7 @@ import { clamp, hexToOklchVals } from "./autotrixel/utils.js";
 import { pixelToGrid, getTriangleCluster, findBestCenterPixel, getTriangleVertices, getBarycentric } from "./autotrixel/geometry.js";
 import { fullRedraw, drawCursor } from "./autotrixel/drawing.js";
 import { batchPaintCells, fillBucket, interpolateStroke } from "./autotrixel/actions.js";
-import { exportImage, exportSVG } from "./autotrixel/export.js";
+import { exportImage, exportSVG, exportImageAsBlob, exportSVGAsString } from "./autotrixel/export.js";
 
 export function createAutoTrixel(rootElement) {
     if (!rootElement) {
@@ -1163,5 +1163,22 @@ export function createAutoTrixel(rootElement) {
                 cb(colorState);
             };
         },
+        getState: () => ({
+            version: 1,
+            config: { ...config },
+            gridData: JSON.parse(JSON.stringify(gridData)),
+            palette: [], // palette is managed in Vue (PaintControls.vue), not in the engine
+        }),
+        loadState: (state) => {
+            if (state.config) {
+                Object.assign(config, state.config);
+            }
+            gridData = state.gridData ? JSON.parse(JSON.stringify(state.gridData)) : {};
+            pushToHistory(saveStateForUndo());
+            updateDimensions();
+            fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
+        },
+        exportImageAsBlob: () => exportImageAsBlob(artCanvas, gridData, config, triHeight, W_half, imageRegistry),
+        exportSVGAsString: () => exportSVGAsString(artCanvas, gridData, config, triHeight, W_half),
     };
 }
