@@ -23,3 +23,7 @@ dist-ssr
 *.sln
 *.sw?
 .gitnexus
+
+# Tauri
+/src-tauri/target/
+/src-tauri/gen/
