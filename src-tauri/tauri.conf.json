@@ -32,6 +32,21 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
+    ],
+    "fileAssociations": [
+      {
+        "ext": ["trixel.json"],
+        "mimeType": "application/json",
+        "description": "AutoTrixel Canvas File"
+      }
     ]
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/Kiriketsuki/AutoTrixel/releases/latest/download/latest.json"
+      ],
+      "pubkey": ""
+    }
   }
 }
