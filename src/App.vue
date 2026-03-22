@@ -2,6 +2,8 @@
     import { onBeforeUnmount, onMounted, ref, shallowRef } from "vue";
     import { createAutoTrixel } from "./logic/createAutoTrixel";
     import Sidebar from "./components/Sidebar.vue";
+    import { getLaunchFilePath } from "./tauri/file-association.js";
+    import { checkForUpdate } from "./tauri/updater.js";
 
     const appRoot = ref(null);
     const controlMode = ref("canvas"); // 'canvas' or 'background'
@@ -19,11 +21,22 @@
         autoTrixelInstance.value?.setControlMode(mode);
     };
 
-    onMounted(() => {
+    onMounted(async () => {
         autoTrixelInstance.value = createAutoTrixel(appRoot.value);
         autoTrixelInstance.value.onBgChange((newState) => {
             bgState.value = { ...newState };
         });
+
+        if (window.__TAURI__) {
+            // Load file passed via file association (e.g. double-click .trixel.json)
+            const filePath = await getLaunchFilePath();
+            if (filePath) {
+                autoTrixelInstance.value?.loadState?.(filePath);
+            }
+
+            // Check for updates non-blocking after a short delay
+            setTimeout(() => checkForUpdate(), 3000);
+        }
     });
 
     onBeforeUnmount(() => {
