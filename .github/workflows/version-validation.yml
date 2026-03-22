@@ -5,6 +5,7 @@ on:
         branches:
             - main
             - release
+            - "epic/**"
         types: [opened, synchronize, reopened]
 
 jobs:
@@ -12,84 +13,87 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - name: Checkout code
-              uses: actions/checkout@v5
+              uses: actions/checkout@v6
               with:
                   fetch-depth: 0
 
-            - name: Get latest tag
-              id: get_tag
-              run: |
-                  # Get the latest tag
-                  LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-                  echo "latest_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
-                  echo "Latest tag: $LATEST_TAG"
-
-            - name: Check if version file exists
+            - name: Validate VERSION file exists and format
               id: check_version
               run: |
-                  if [ -f VERSION ]; then
-                    NEW_VERSION=$(cat VERSION)
-                    echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
-                    echo "Version file exists with version: $NEW_VERSION"
-                  else
-                    echo "No VERSION file found. Please create one with the new version."
+                  if [ ! -f VERSION ]; then
+                    echo "Error: No VERSION file found."
                     exit 1
                   fi
 
-            - name: Validate semantic versioning
+                  VERSION=$(cat VERSION | tr -d '[:space:]')
+                  echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+                  # Validate format: YY.Major.Minor.Patch[Suffix]
+                  if ! echo "$VERSION" | grep -qE '^[0-9]{2}\.[0-9]+\.[0-9]+\.[0-9]+[a-zA-Z]*$'; then
+                    echo "Error: Version '$VERSION' does not match YY.Major.Minor.Patch[Suffix]"
+                    echo "Examples: 26.0.0.0, 26.3.2.1, 26.3.2.1a"
+                    exit 1
+                  fi
+
+                  echo "VERSION file valid: $VERSION"
+
+            - name: Validate package.json version matches VERSION (if exists)
               run: |
-                  VERSION=${{ steps.check_version.outputs.new_version }}
-                  # Validate calendar-based version format: YY.MM.minor.patch
-                  if ! echo "$VERSION" | grep -qE '^[0-9]{2}\.[0-9]{2}\.[0-9]+\.[0-9]+$'; then
-                    echo "Error: Version $VERSION does not follow calendar-based versioning (YY.MM.minor.patch)"
-                    echo "Example: 25.11.0.0 (November 2025, 0 features, 0 patches)"
+                  if [ ! -f package.json ]; then
+                    echo "No package.json found, skipping."
+                    exit 0
+                  fi
+
+                  VERSION_FILE=$(cat VERSION | tr -d '[:space:]')
+                  PACKAGE_VERSION=$(grep -oP '"version"\s*:\s*"\K[^"]+' package.json)
+
+                  if [ "$VERSION_FILE" != "$PACKAGE_VERSION" ]; then
+                    echo "Error: VERSION ($VERSION_FILE) does not match package.json ($PACKAGE_VERSION)"
                     exit 1
                   fi
 
-                  # Extract and validate year/month
-                  YY=$(echo "$VERSION" | cut -d. -f1)
-                  MM=$(echo "$VERSION" | cut -d. -f2)
-                  CURRENT_YY=$(date +%y)
-                  CURRENT_MM=$(date +%m)
+                  echo "package.json version matches: $VERSION_FILE"
 
-                  # Ensure YY matches current year
-                  if [ "$YY" != "$CURRENT_YY" ]; then
-                    echo "⚠️  Warning: Version year ($YY) doesn't match current year ($CURRENT_YY)"
-                  fi
+            - name: Validate pyproject.toml versions match VERSION (if any exist)
+              run: |
+                  VERSION_FILE=$(cat VERSION | tr -d '[:space:]')
 
-                  # Validate month is 01-12
-                  if [ "$MM" -lt 1 ] || [ "$MM" -gt 12 ]; then
-                    echo "Error: Month must be between 01 and 12, got $MM"
-                    exit 1
-                  fi
+                  find . -maxdepth 4 -name "pyproject.toml" \
+                    -not -path "*/node_modules/*" \
+                    -not -path "*/.pio/*" \
+                    -not -path "*/vendor/*" \
+                    -not -path "*/.venv/*" | while read -r f; do
+                    PYVERSION=$(grep -oP '^version\s*=\s*"\K[^"]+' "$f" || true)
+                    if [ -n "$PYVERSION" ] && [ "$PYVERSION" != "$VERSION_FILE" ]; then
+                      echo "Error: VERSION ($VERSION_FILE) does not match $f ($PYVERSION)"
+                      exit 1
+                    fi
+                  done
 
-                  echo "✓ Version $VERSION is valid calendar-based version"
+                  echo "All pyproject.toml versions match (or none found)."
 
             - name: Compare with latest tag (PRs to release only)
               if: github.base_ref == 'release'
               run: |
-                  LATEST_TAG="${{ steps.get_tag.outputs.latest_tag }}"
-                  NEW_VERSION="${{ steps.check_version.outputs.new_version }}"
+                  git fetch --tags --force 2>/dev/null || true
+                  LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+                  VERSION="${{ steps.check_version.outputs.version }}"
 
-                  # Remove 'v' prefix from tag if present
-                  LATEST_VERSION="${LATEST_TAG#v}"
-
-                  echo "Latest released version: $LATEST_VERSION"
-                  echo "New version: $NEW_VERSION"
-
-                  # Simple version comparison (assumes valid SemVer)
-                  if [ "$NEW_VERSION" = "$LATEST_VERSION" ]; then
-                    echo "Error: New version $NEW_VERSION is the same as latest tag $LATEST_TAG"
-                    exit 1
+                  if [ -n "$LATEST_TAG" ]; then
+                    LATEST_VERSION="${LATEST_TAG#v}"
+                    if [ "$VERSION" = "$LATEST_VERSION" ]; then
+                      echo "Error: Version $VERSION is the same as latest tag $LATEST_TAG"
+                      exit 1
+                    fi
+                    echo "Version $VERSION differs from latest tag $LATEST_TAG"
+                  else
+                    echo "No previous tags found, skipping comparison."
                   fi
-
-                  echo "✓ Version validation passed"
 
             - name: Summary
               run: |
                   echo "## Version Validation Summary" >> $GITHUB_STEP_SUMMARY
                   echo "" >> $GITHUB_STEP_SUMMARY
                   echo "- **Target Branch**: ${{ github.base_ref }}" >> $GITHUB_STEP_SUMMARY
-                  echo "- **Version**: ${{ steps.check_version.outputs.new_version }}" >> $GITHUB_STEP_SUMMARY
-                  echo "- **Latest Tag**: ${{ steps.get_tag.outputs.latest_tag }}" >> $GITHUB_STEP_SUMMARY
-                  echo "- **Status**: ✓ Valid" >> $GITHUB_STEP_SUMMARY
+                  echo "- **Version**: ${{ steps.check_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+                  echo "- **Status**: Passed" >> $GITHUB_STEP_SUMMARY

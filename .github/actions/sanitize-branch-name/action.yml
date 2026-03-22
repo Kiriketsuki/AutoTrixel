@@ -8,7 +8,7 @@ inputs:
         description: "Issue title"
         required: true
     prefix:
-        description: "Branch prefix (e.g., feature, bug)"
+        description: "Branch prefix (e.g., epic, feature, task, bug, hotfix)"
         required: true
 outputs:
     branch-name:
@@ -20,18 +20,14 @@ runs:
         - id: sanitize
           shell: bash
           run: |
-              # Sanitize issue title for branch name
               ISSUE_TITLE="${{ inputs.issue-title }}"
               SANITIZED_TITLE=$(echo "$ISSUE_TITLE" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | sed 's/^-//;s/-$//')
               BRANCH_NAME="${{ inputs.prefix }}/${{ inputs.issue-number }}-${SANITIZED_TITLE}"
 
               # Truncate branch name if too long (max 100 chars)
               if [ ${#BRANCH_NAME} -gt 100 ]; then
-                # Truncate to 100 chars
                 BRANCH_NAME="${BRANCH_NAME:0:100}"
-                # Remove trailing hyphens (could be multiple after truncation)
                 BRANCH_NAME=$(echo "$BRANCH_NAME" | sed 's/-*$//')
-                # If we accidentally created a name ending with just the prefix, add a suffix
                 if [[ "$BRANCH_NAME" == "${{ inputs.prefix }}/${{ inputs.issue-number }}" ]] || [[ "$BRANCH_NAME" == "${{ inputs.prefix }}/${{ inputs.issue-number }}-" ]]; then
                   BRANCH_NAME="${{ inputs.prefix }}/${{ inputs.issue-number }}-issue"
                 fi

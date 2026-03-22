@@ -4,6 +4,7 @@ on:
     pull_request:
         branches:
             - main
+            - "epic/**"
         types: [closed]
 
 jobs:
@@ -14,38 +15,47 @@ jobs:
             contents: write
         steps:
             - name: Checkout code
-              uses: actions/checkout@v5
+              uses: actions/checkout@v6
               with:
-                  ref: main
+                  ref: ${{ github.event.pull_request.base.ref }}
                   fetch-depth: 0
 
             - name: Determine version bump type
               id: bump_type
               run: |
                   BRANCH_NAME="${{ github.head_ref }}"
-                  echo "Branch name: $BRANCH_NAME"
+                  BASE_BRANCH="${{ github.base_ref }}"
+                  echo "Source branch: $BRANCH_NAME"
+                  echo "Base branch: $BASE_BRANCH"
 
-                  if [[ $BRANCH_NAME == feature/* ]]; then
-                    echo "bump_type=minor" >> $GITHUB_OUTPUT
-                    echo "Detected feature branch - will bump MINOR version"
-                  elif [[ $BRANCH_NAME == bug/* || $BRANCH_NAME == hotfix/* ]]; then
-                    echo "bump_type=patch" >> $GITHUB_OUTPUT
-                    echo "Detected bug or hotfix branch - will bump PATCH version"
-                  else
-                    echo "bump_type=none" >> $GITHUB_OUTPUT
-                    echo "Not a feature or bug branch - no automatic version bump"
+                  BUMP_TYPE="none"
+
+                  if [[ $BRANCH_NAME == epic/* ]]; then
+                    BUMP_TYPE="major"
+                    echo "Detected epic branch. Bump: Major."
+                  elif [[ $BRANCH_NAME == feature/* ]]; then
+                    BUMP_TYPE="minor"
+                    echo "Detected feature branch. Bump: Minor."
+                  elif [[ $BRANCH_NAME == task/* || $BRANCH_NAME == bug/* ]]; then
+                    BUMP_TYPE="patch"
+                    echo "Detected task/bug branch. Bump: Patch."
+                  elif [[ $BRANCH_NAME == hotfix/* ]]; then
+                    BUMP_TYPE="hotfix"
+                    echo "Detected hotfix branch. Bump: Suffix."
                   fi
+
+                  echo "bump_type=$BUMP_TYPE" >> $GITHUB_OUTPUT
 
             - name: Read current version
               id: current_version
               if: steps.bump_type.outputs.bump_type != 'none'
               run: |
                   if [ -f VERSION ]; then
-                    CURRENT_VERSION=$(cat VERSION)
+                    CURRENT_VERSION=$(cat VERSION | tr -d '[:space:]')
                     echo "current=$CURRENT_VERSION" >> $GITHUB_OUTPUT
                     echo "Current version: $CURRENT_VERSION"
                   else
-                    echo "No VERSION file found"
+                    echo "Error: No VERSION file found"
                     exit 1
                   fi
 
@@ -56,74 +66,119 @@ jobs:
                   CURRENT="${{ steps.current_version.outputs.current }}"
                   BUMP_TYPE="${{ steps.bump_type.outputs.bump_type }}"
 
-                  # Parse calendar-based version: YY.MM.minor.patch
-                  if [[ $CURRENT =~ ^([0-9]{2})\.([0-9]{2})\.([0-9]+)\.([0-9]+)$ ]]; then
+                  # Parse YY.Major.Minor.Patch[Suffix]
+                  if [[ $CURRENT =~ ^([0-9]{2})\.([0-9]+)\.([0-9]+)\.([0-9]+)([a-zA-Z]*)$ ]]; then
                     YY="${BASH_REMATCH[1]}"
-                    MM="${BASH_REMATCH[2]}"
+                    MAJOR="${BASH_REMATCH[2]}"
                     MINOR="${BASH_REMATCH[3]}"
                     PATCH="${BASH_REMATCH[4]}"
-                    
-                    # Get current year and month
-                    CURRENT_YY=$(date +%y)
-                    CURRENT_MM=$(date +%m)
-                    
-                    # Check if we've moved to a new year
-                    if [ "$YY" != "$CURRENT_YY" ]; then
-                      echo "⚠️  Version year ($YY) doesn't match current year ($CURRENT_YY)"
-                      echo "Please manually update VERSION file to $CURRENT_YY.$CURRENT_MM.0.0 for new year"
-                      exit 1
-                    fi
-                    
-                    # Check if we've moved to a new month
-                    if [ "$MM" != "$CURRENT_MM" ]; then
-                      echo "⚠️  Version month ($MM) doesn't match current month ($CURRENT_MM)"
-                      echo "Please manually update VERSION file to $CURRENT_YY.$CURRENT_MM.$MINOR.$PATCH for new month"
-                      exit 1
-                    fi
-                    
-                    # Bump version based on type
-                    if [ "$BUMP_TYPE" = "minor" ]; then
-                      # Feature: increment minor, reset patch
-                      MINOR=$((MINOR + 1))
-                      PATCH=0
-                    elif [ "$BUMP_TYPE" = "patch" ]; then
-                      # Bug: increment patch
-                      PATCH=$((PATCH + 1))
-                    fi
-                    
-                    NEW_VERSION="$YY.$MM.$MINOR.$PATCH"
-                    echo "new=$NEW_VERSION" >> $GITHUB_OUTPUT
-                    echo "New version: $NEW_VERSION"
+                    SUFFIX="${BASH_REMATCH[5]}"
                   else
                     echo "Error: Invalid version format: $CURRENT"
-                    echo "Expected format: YY.MM.minor.patch (e.g., 25.11.0.0)"
+                    echo "Expected: YY.Major.Minor.Patch[Suffix] (e.g. 26.3.2.1 or 26.3.2.1a)"
                     exit 1
                   fi
 
-            - name: Update VERSION file and package.json
+                  # Year rollover check
+                  CURRENT_YY=$(date +%y)
+                  if [ "$YY" != "$CURRENT_YY" ]; then
+                    echo "New year detected ($YY -> $CURRENT_YY). Resetting all components."
+                    NEW_VERSION="${CURRENT_YY}.0.0.0"
+                  else
+                    case "$BUMP_TYPE" in
+                      major)
+                        MAJOR=$((MAJOR + 1))
+                        SUFFIX=""
+                        NEW_VERSION="$YY.$MAJOR.$MINOR.$PATCH"
+                        ;;
+                      minor)
+                        MINOR=$((MINOR + 1))
+                        PATCH=0
+                        SUFFIX=""
+                        NEW_VERSION="$YY.$MAJOR.$MINOR.$PATCH"
+                        ;;
+                      patch)
+                        PATCH=$((PATCH + 1))
+                        SUFFIX=""
+                        NEW_VERSION="$YY.$MAJOR.$MINOR.$PATCH"
+                        ;;
+                      hotfix)
+                        if [ -z "$SUFFIX" ]; then
+                          SUFFIX="a"
+                        else
+                          # Increment suffix as base-26: a..z, aa..az, ba..zz, aaa...
+                          SUFFIX=$(python3 -c "
+def inc(s):
+    chars = list(s)
+    i = len(chars) - 1
+    while i >= 0:
+        if chars[i] == 'z':
+            chars[i] = 'a'
+            i -= 1
+        else:
+            chars[i] = chr(ord(chars[i]) + 1)
+            return ''.join(chars)
+    return 'a' + ''.join(chars)
+print(inc('$SUFFIX'))
+")
+                        fi
+                        NEW_VERSION="$YY.$MAJOR.$MINOR.$PATCH$SUFFIX"
+                        ;;
+                    esac
+                  fi
+
+                  echo "new=$NEW_VERSION" >> $GITHUB_OUTPUT
+                  echo "New version: $NEW_VERSION"
+
+            - name: Update version files
               if: steps.bump_type.outputs.bump_type != 'none'
               run: |
                   NEW_VERSION="${{ steps.new_version.outputs.new }}"
+
+                  # 1. Update VERSION file
                   echo "$NEW_VERSION" > VERSION
+                  echo "Updated VERSION to $NEW_VERSION"
 
-                  # Update package.json version
-                  sed -i "s/\"version\": \".*\"/\"version\": \"$NEW_VERSION\"/" package.json
+                  # 2. Update package.json (if exists)
+                  if [ -f package.json ]; then
+                    sed -i "s/\"version\": \".*\"/\"version\": \"$NEW_VERSION\"/" package.json
+                    echo "Updated package.json to $NEW_VERSION"
+                  fi
 
-                  echo "Updated VERSION file and package.json to $NEW_VERSION"
+                  # 3. Update README version badge (if exists)
+                  if [ -f README.md ]; then
+                    sed -i "s|version-[0-9a-zA-Z.]*-blue|version-$NEW_VERSION-blue|" README.md
+                    echo "Updated README badge to $NEW_VERSION"
+                  fi
 
-            - name: Commit version bump
+                  # 4. Update all pyproject.toml files (excluding vendored dirs)
+                  find . -maxdepth 4 -name "pyproject.toml" \
+                    -not -path "*/node_modules/*" \
+                    -not -path "*/.pio/*" \
+                    -not -path "*/vendor/*" \
+                    -not -path "*/.venv/*" | while read -r f; do
+                    if grep -q '^version' "$f"; then
+                      sed -i "s/^version = \".*\"/version = \"$NEW_VERSION\"/" "$f"
+                      echo "Updated $f to $NEW_VERSION"
+                    fi
+                  done
+
+            - name: Commit and push
               if: steps.bump_type.outputs.bump_type != 'none'
               run: |
                   NEW_VERSION="${{ steps.new_version.outputs.new }}"
                   BUMP_TYPE="${{ steps.bump_type.outputs.bump_type }}"
+                  TARGET_BRANCH="${{ github.event.pull_request.base.ref }}"
 
                   git config user.name "github-actions[bot]"
                   git config user.email "github-actions[bot]@users.noreply.github.com"
-                  git add VERSION package.json
-                  git commit -m "chore: bump version to $NEW_VERSION [skip ci]
 
-                  Automatic $BUMP_TYPE version bump after merging ${{ github.head_ref }}"
-                  git push origin main
+                  git add -A
+                  git diff --cached --quiet && { echo "No changes to commit"; exit 0; }
+
+                  git commit -m "ci: bump version to $NEW_VERSION [skip ci]" \
+                    -m "Automatic $BUMP_TYPE bump after merging ${{ github.head_ref }}"
+                  git push origin "$TARGET_BRANCH"
 
             - name: Summary
               if: steps.bump_type.outputs.bump_type != 'none'

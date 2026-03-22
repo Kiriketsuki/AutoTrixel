@@ -1,73 +1,32 @@
-name: Feature Request (Form)
-description: Suggest a new feature or enhancement for AutoTrixel
+name: "[Feature] Feature Request"
+description: Suggest a new feature or enhancement
 title: "[Feature]: "
-labels: ["enhancement"]
-assignees: []
+labels: ["feature"]
 body:
     - type: markdown
       attributes:
           value: |
-              Thanks for suggesting a feature! Please fill out the form below to help us understand your request.
+              Thanks for taking the time to suggest a new feature! Features branch from a Task or from `main`. When merged, they bump the **Minor** version (3rd digit: YY.X.**X**.0). The target branch will be rebased before merge to ensure a linear history.
 
-    - type: dropdown
-      id: component
-      attributes:
-          label: Component
-          description: Which component of AutoTrixel would this feature affect?
-          options:
-              - Rendering Engine
-              - Frontend (Vue)
-              - Triangle Generation Logic
-              - Canvas/Drawing System
-              - Color/Pixel Processing
-              - UI/Controls
-              - Multiple Components
-              - New Component
-      validations:
-          required: true
-
-    - type: dropdown
-      id: feature-type
-      attributes:
-          label: Feature Type
-          description: What type of feature is this?
-          options:
-              - New Functionality
-              - Enhancement/Improvement
-              - Performance Optimization
-              - User Interface/UX
-              - API/Integration
-              - Documentation
-              - Testing/Quality
-      validations:
-          required: false
+              **Hierarchical Workflow**: If this feature belongs to a specific Task, add it as a sub-issue to that Task issue for automatic parent tracking.
 
     - type: textarea
       id: problem
       attributes:
-          label: Problem Statement
-          description: Is your feature request related to a problem? Please describe.
-          placeholder: A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
+          label: Is your feature request related to a problem?
+          description: A clear and concise description of what the problem is.
+          placeholder: I'm always frustrated when...
       validations:
           required: false
 
     - type: textarea
       id: solution
       attributes:
-          label: Proposed Solution
-          description: Describe the solution you'd like to see
-          placeholder: A clear and concise description of what you want to happen...
+          label: Describe the solution you'd like
+          description: A clear and concise description of what you want to happen.
+          placeholder: I would like to see...
       validations:
-          required: false
-
-    - type: textarea
-      id: alternatives
-      attributes:
-          label: Alternatives Considered
-          description: Describe any alternative solutions or features you've considered
-          placeholder: Are there other ways to solve this problem?
-      validations:
-          required: false
+          required: true
 
     - type: dropdown
       id: priority
@@ -75,48 +34,38 @@ body:
           label: Priority
           description: How important is this feature?
           options:
-              - Critical (Blocking/Essential)
-              - High (Important)
-              - Medium (Nice to have)
-              - Low (Future consideration)
+              - Low - Nice to have
+              - Medium - Would improve workflow
+              - High - Blocking development or testing
+          default: 0
       validations:
           required: false
 
     - type: textarea
-      id: use-cases
+      id: alternatives
       attributes:
-          label: Use Cases
-          description: Describe specific scenarios where this feature would be used
+          label: Alternatives considered
+          description: Any alternative approaches you've thought about.
+          placeholder: Instead of this, we could also...
+      validations:
+          required: false
+
+    - type: textarea
+      id: use-case
+      attributes:
+          label: Use Case / User Story
+          description: Describe a specific scenario where this feature would help.
           placeholder: |
-              1. When a user creates triangle-pixel art...
-              2. During canvas rendering...
-              3. When adjusting color palettes...
+              As a [user type],
+              I want to [action],
+              So that [benefit].
       validations:
           required: false
 
     - type: textarea
-      id: technical-details
+      id: additional
       attributes:
-          label: Technical Details (Optional)
-          description: Any technical implementation details, dependencies, or considerations
-          placeholder: Technical notes, potential dependencies, architecture considerations...
-      validations:
-          required: false
-
-    - type: textarea
-      id: additional-context
-      attributes:
-          label: Additional Context
-          description: Add any other context, screenshots, mockups, or examples about the feature request
-          placeholder: Any additional information that might help...
-      validations:
-          required: false
-
-    - type: input
-      id: contact
-      attributes:
-          label: Contact Details (Optional)
-          description: How can we reach you if we need more information?
-          placeholder: ex. email@example.com
+          label: Additional context
+          description: Any other context, mockups, or technical considerations.
       validations:
           required: false
