@@ -1,6 +1,6 @@
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
-import { getCurrentPath, setCurrentPath, markClean } from './state.js';
+import { getCurrentPath, setCurrentPath, markClean, getPalette, setPalette } from './state.js';
 
 export async function openFile(engine) {
     const path = await open({
@@ -12,6 +12,7 @@ export async function openFile(engine) {
     const content = await readTextFile(path);
     const state = JSON.parse(content);
     engine.loadState(state);
+    setPalette(state.palette);
     setCurrentPath(path);
     markClean();
 }
@@ -22,6 +23,7 @@ export async function saveFile(engine) {
         return saveFileAs(engine);
     }
     const state = engine.getState();
+    state.palette = getPalette();
     await writeTextFile(path, JSON.stringify(state, null, 2));
     markClean();
 }
@@ -34,6 +36,7 @@ export async function saveFileAs(engine) {
     if (!path) return;
 
     const state = engine.getState();
+    state.palette = getPalette();
     await writeTextFile(path, JSON.stringify(state, null, 2));
     setCurrentPath(path);
     markClean();
