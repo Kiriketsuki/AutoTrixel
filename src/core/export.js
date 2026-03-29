@@ -116,6 +116,13 @@ export function renderPNG(engine, adapter) {
     return adapter.canvasToBlob(canvas);
 }
 
+/**
+ * Render grid data to an SVG string using the headless engine.
+ * Note: grid-line overlay is not supported in headless mode — the browser
+ * export's grid-line toggle (exportGridToggle) has no headless equivalent.
+ * For full SVG feature parity including grid lines, use exportSVGAsString
+ * via createAutoTrixel (src/logic/autotrixel/export.js).
+ */
 export function renderSVG(engine) {
     const config = engine.getConfig();
     const gridData = engine.getGridData();
