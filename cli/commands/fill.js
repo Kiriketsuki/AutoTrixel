@@ -74,7 +74,6 @@ export function registerFill(program) {
                     engine.setColor(parsed.l, parsed.c, parsed.h);
                 }
 
-                engine.setTool("pencil");
                 engine.fillAtCell(r, c);
 
                 await saveState(input, engineStateToFileState(engine, state.palette));

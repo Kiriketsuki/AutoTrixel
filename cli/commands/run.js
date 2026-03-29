@@ -11,8 +11,12 @@ function parseColor(colorStr) {
             return { type: "hex", value: colorStr };
         }
     }
-    const m = colorStr.match(/^oklch\(\s*([\d.]+)%?\s+([\d.]+)\s+([\d.]+)\s*\)$/);
-    if (m) return { type: "oklch", l: parseFloat(m[1]) / 100, c: parseFloat(m[2]), h: parseFloat(m[3]) };
+    const m = colorStr.match(/^oklch\(\s*([\d.]+(%)?)\s+([\d.]+)\s+([\d.]+)\s*\)$/);
+    if (m) {
+        let l = parseFloat(m[1]);
+        if (m[2] === "%") l = l / 100;
+        return { type: "oklch", l, c: parseFloat(m[3]), h: parseFloat(m[4]) };
+    }
     return null;
 }
 
@@ -143,6 +147,10 @@ export function registerRun(program) {
                     }
 
                     case "palette": {
+                        if (!op.import || typeof op.import !== "string") {
+                            process.stderr.write(`Error: operation ${i} (palette) requires an "import" field with a file path\n`);
+                            process.exit(1);
+                        }
                         let gplContent;
                         try {
                             gplContent = await readFile(op.import, "utf-8");
