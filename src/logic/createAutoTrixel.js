@@ -982,8 +982,9 @@ export function createAutoTrixel(rootElement) {
         },
         getState: () => engine.getState(),
         loadState: (state) => {
+            const snapshot = engine.saveSnapshot();
             engine.loadState(state);
-            engine.pushToHistory(engine.saveSnapshot());
+            engine.pushToHistory(snapshot);
             updateDimensions();
             updateUndoButton();
             redraw();

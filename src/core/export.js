@@ -1,6 +1,8 @@
 import { getTrianglePath, getTriangleVertices } from "../logic/autotrixel/geometry.js";
 import { validateAdapter } from "./canvas-adapter.js";
 
+// TODO: renderGridDataToContext duplicates rendering logic from src/logic/autotrixel/export.js (L:17-100).
+// Both should be consolidated into a shared rendering kernel. See epic/32 for tracking.
 function renderGridDataToContext(ctx, gridData, config, triHeight, W_half, imageRegistry) {
     if (config.bgColor !== "transparent") {
         ctx.fillStyle = config.bgColor;
