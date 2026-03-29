@@ -36,8 +36,7 @@ function parseOklch(oklchStr) {
 }
 
 function collectCell(value, previous) {
-    previous.push(value);
-    return previous;
+    return [...previous, value];
 }
 
 export function registerPaint(program) {

@@ -1,6 +1,12 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { access } from "node:fs/promises";
+import {
+    stateToEngineConfig,
+    engineConfigToState,
+} from "../src/core/config-utils.js";
+
+export { stateToEngineConfig };
 
 const STATE_VERSION = 1;
 
@@ -10,27 +16,6 @@ export function createState(rows, cols, triSize = 30) {
         config: { rows, cols, triSize },
         gridData: {},
         palette: [],
-    };
-}
-
-export function stateToEngineConfig(state) {
-    const { rows, cols, triSize } = state.config;
-    const W_half = triSize / 2;
-    const triHeight = (triSize * Math.sqrt(3)) / 2;
-    return {
-        triSide: triSize,
-        width: cols * W_half,
-        height: rows * triHeight,
-        widthTriangles: cols,
-        heightTriangles: rows,
-    };
-}
-
-function engineConfigToState(config) {
-    return {
-        rows: config.heightTriangles,
-        cols: config.widthTriangles,
-        triSize: config.triSide,
     };
 }
 

@@ -190,6 +190,12 @@ export function createEngine(options = {}) {
         },
 
         // Serialization
+        /**
+         * Returns a serializable snapshot of the engine state.
+         * Note: `palette` is always `[]` — the engine does not manage palette state.
+         * Callers (Tauri shell, CLI) must inject the palette from their own
+         * application state before persisting to disk.
+         */
         getState() {
             return {
                 version: 1,
