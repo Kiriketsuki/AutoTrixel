@@ -34,6 +34,16 @@ function parseCell(cellStr) {
     return { r, c };
 }
 
+function validateCellBounds(cell, canvasConfig, opIndex, opType) {
+    const { heightTriangles, widthTriangles } = canvasConfig;
+    if (cell.r < 0 || cell.r >= heightTriangles || cell.c < 0 || cell.c >= widthTriangles) {
+        process.stderr.write(
+            `Error: operation ${opIndex} (${opType}) cell (${cell.r},${cell.c}) out of bounds (grid is ${heightTriangles}x${widthTriangles})\n`
+        );
+        process.exit(1);
+    }
+}
+
 export function registerRun(program) {
     program
         .command("run")
@@ -58,6 +68,7 @@ export function registerRun(program) {
             }
 
             let engine = null;
+            let canvasConfig = null;
             let palette = [];
 
             for (let i = 0; i < instructions.length; i++) {
@@ -66,9 +77,25 @@ export function registerRun(program) {
                 switch (op.op) {
                     case "create": {
                         const { rows, cols, triSize } = op;
-                        const state = createState(rows, cols, triSize || 30);
+                        const numRows = Number(rows);
+                        const numCols = Number(cols);
+                        const numTriSize = Number(triSize || 30);
+                        if (isNaN(numRows) || numRows <= 0) {
+                            process.stderr.write(`Error: operation ${i} (create) requires a positive "rows" value\n`);
+                            process.exit(1);
+                        }
+                        if (isNaN(numCols) || numCols <= 0) {
+                            process.stderr.write(`Error: operation ${i} (create) requires a positive "cols" value\n`);
+                            process.exit(1);
+                        }
+                        if (isNaN(numTriSize) || numTriSize <= 0) {
+                            process.stderr.write(`Error: operation ${i} (create) requires a positive "triSize" value\n`);
+                            process.exit(1);
+                        }
+                        const state = createState(numRows, numCols, numTriSize);
                         const config = stateToEngineConfig(state);
                         engine = createEngine(config);
+                        canvasConfig = engine.getConfig();
                         break;
                     }
 
@@ -87,6 +114,7 @@ export function registerRun(program) {
                             process.stderr.write(`Error: operation ${i} (paint) has invalid color "${op.color}"\n`);
                             process.exit(1);
                         }
+                        validateCellBounds(cell, canvasConfig, i, "paint");
                         applyColor(engine, parsed);
                         engine.setTool("pencil");
                         engine.paintCells([cell]);
@@ -108,6 +136,7 @@ export function registerRun(program) {
                             process.stderr.write(`Error: operation ${i} (fill) has invalid color "${op.color}"\n`);
                             process.exit(1);
                         }
+                        validateCellBounds(cell, canvasConfig, i, "fill");
                         applyColor(engine, parsed);
                         engine.fillAtCell(cell.r, cell.c);
                         break;
