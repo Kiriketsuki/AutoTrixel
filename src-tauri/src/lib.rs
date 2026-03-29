@@ -67,7 +67,7 @@ pub fn run() {
                 .build()?;
 
             // Help menu items
-            let about_item = PredefinedMenuItem::about(app, Some("About AutoTrixel"), None)?;
+            let about_item = PredefinedMenuItem::about(app, Some("About TrKixel"), None)?;
 
             let help_menu = SubmenuBuilder::new(app, "Help")
                 .item(&about_item)

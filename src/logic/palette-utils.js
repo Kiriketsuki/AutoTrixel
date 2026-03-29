@@ -51,7 +51,7 @@ export function parseGPL(content) {
  * @param {string} name - The name of the palette.
  * @returns {string} - The formatted .gpl content.
  */
-export function generateGPL(colors, name = "AutoTrixel Palette") {
+export function generateGPL(colors, name = "TrKixel Palette") {
     let content = "GIMP Palette\n";
     content += `Name: ${name}\n`;
     content += "Columns: 4\n";

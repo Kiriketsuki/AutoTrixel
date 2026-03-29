@@ -1,6 +1,6 @@
 # CI/CD Versioning Setup
 
-This document explains the CI/CD versioning and release automation setup for the AutoTrixel repository.
+This document explains the CI/CD versioning and release automation setup for the TrKixel repository.
 
 ## Overview
 

@@ -121,7 +121,7 @@ export function renderPNG(engine, adapter) {
  * Note: grid-line overlay is not supported in headless mode — the browser
  * export's grid-line toggle (exportGridToggle) has no headless equivalent.
  * For full SVG feature parity including grid lines, use exportSVGAsString
- * via createAutoTrixel (src/logic/autotrixel/export.js).
+ * via createTrKixel (src/logic/autotrixel/export.js).
  */
 export function renderSVG(engine) {
     const config = engine.getConfig();

@@ -15,13 +15,13 @@ No test framework is configured. Testing is manual (browser-based).
 
 ## Architecture
 
-AutoTrixel is a triangle-pixel art editor — a single-page Vue 3 app that renders and manipulates triangular grids on HTML Canvas.
+TrKixel is a triangle-pixel art editor — a single-page Vue 3 app that renders and manipulates triangular grids on HTML Canvas.
 
 ### Core Pattern: Imperative Engine + Vue Shell
 
-The app uses a **hybrid architecture**. Vue components handle the sidebar UI, but the canvas engine (`createAutoTrixel`) is a standalone imperative module that directly manipulates DOM elements via `id` selectors. Vue's `App.vue` mounts the engine into the root element and exposes it to sidebar components via `shallowRef`.
+The app uses a **hybrid architecture**. Vue components handle the sidebar UI, but the canvas engine (`createTrKixel`) is a standalone imperative module that directly manipulates DOM elements via `id` selectors. Vue's `App.vue` mounts the engine into the root element and exposes it to sidebar components via `shallowRef`.
 
-- `src/logic/createAutoTrixel.js` — **The engine.** A single factory function that returns an API object. It owns all canvas state: `gridData` (the pixel data), tool state, undo history, zoom/pan, background image, and event listeners. This is the largest and most critical file.
+- `src/logic/createTrKixel.js` — **The engine.** A single factory function that returns an API object. It owns all canvas state: `gridData` (the pixel data), tool state, undo history, zoom/pan, background image, and event listeners. This is the largest and most critical file.
 - `src/components/Sidebar.vue` — Orchestrates sidebar sections. Receives the engine instance as a prop and delegates to child components.
 - `src/components/PaintControls.vue` — Color picker (OKLCH), palette management (import/export `.gpl`), and image fill uploads. Calls engine methods like `setColor()`, `registerImage()`.
 - `src/components/OklchPicker.vue` — Full OKLCH color picker with three 2D gamut-mapped canvases (L×C, C×H, H×L). Renders pixel-by-pixel via `ImageData`.
@@ -47,7 +47,7 @@ The engine logic is split into focused modules:
 
 ### Subdivision System
 
-Trixels can be subdivided into 4 sub-triangles (connecting edge midpoints). Subdivision is recursive — each sub-triangle can be further subdivided. The engine uses barycentric coordinates to determine which sub-triangle the cursor is in, drilling down recursively through `processSubdivision()` in `createAutoTrixel.js`.
+Trixels can be subdivided into 4 sub-triangles (connecting edge midpoints). Subdivision is recursive — each sub-triangle can be further subdivided. The engine uses barycentric coordinates to determine which sub-triangle the cursor is in, drilling down recursively through `processSubdivision()` in `createTrKixel.js`.
 
 ## Color System
 
@@ -60,7 +60,7 @@ Colors use OKLCH throughout. The theme in `src/style.css` defines a Tailwind 4 `
 - Branch naming: `feature/{name}` or `bug/{name}`.
 - Version format: `YY.MM.minor.patch` (in `VERSION` file and `package.json`).
 - Version bumps are automatic via CI when feature/bug branches merge to `main` (`version-bump.yml`).
-- The `base` in `vite.config.js` is `/AutoTrixel/` for GitHub Pages deployment.
+- The `base` in `vite.config.js` is `/TrKixel/` for GitHub Pages deployment.
 
 ## Tools
 
@@ -68,7 +68,7 @@ Five drawing tools: `pencil`, `bucket` (flood fill), `eraser`, `picker` (eyedrop
 
 ## Engine-Vue Communication
 
-The engine returns an API object from `createAutoTrixel()`. Vue components call these methods directly — there is no Vuex/Pinia store.
+The engine returns an API object from `createTrKixel()`. Vue components call these methods directly — there is no Vuex/Pinia store.
 
 **Returned API:** `select`, `updateDimensions`, `resetCanvas`, `exportImage`, `exportSVG`, `destroy`, `registerImage`, `setCurrentImage`, `onBgChange`, `updateBackground`, `setControlMode`, `setColor(l, c, h)`, `onColorChange(cb)`, `setTool`, `undoAction`.
 
@@ -76,14 +76,14 @@ Note: The return object currently has duplicate keys (`setCurrentImage` x2, `onB
 
 ## Gotchas
 
-- **DOM id coupling**: The engine discovers UI elements via `REQUIRED_SELECTORS` in `constants.js` — a hardcoded list of `#id` strings. If any Vue component renames or removes an element's `id`, `createAutoTrixel()` will throw on init. Always check `REQUIRED_SELECTORS` when modifying template `id` attributes.
-- **No state management library**: All canvas state lives inside the `createAutoTrixel` closure. There is no reactive store. Vue components only see what the engine explicitly exposes.
+- **DOM id coupling**: The engine discovers UI elements via `REQUIRED_SELECTORS` in `constants.js` — a hardcoded list of `#id` strings. If any Vue component renames or removes an element's `id`, `createTrKixel()` will throw on init. Always check `REQUIRED_SELECTORS` when modifying template `id` attributes.
+- **No state management library**: All canvas state lives inside the `createTrKixel` closure. There is no reactive store. Vue components only see what the engine explicitly exposes.
 - **Undo is shallow**: History stores `JSON.stringify(gridData)` snapshots (max 10). Image fill references (`imageId`) survive undo but the actual `HTMLImageElement` lives in a separate `imageRegistry` Map that is not part of undo history.
 
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **AutoTrixel** (131 symbols, 379 relationships, 20 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **TrKixel** (245 symbols, 672 relationships, 20 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 
@@ -99,7 +99,7 @@ This project is indexed by GitNexus as **AutoTrixel** (131 symbols, 379 relation
 
 1. `gitnexus_query({query: "<error or symptom>"})` — find execution flows related to the issue
 2. `gitnexus_context({name: "<suspect function>"})` — see all callers, callees, and process participation
-3. `READ gitnexus://repo/AutoTrixel/process/{processName}` — trace the full execution flow step by step
+3. `READ gitnexus://repo/TrKixel/process/{processName}` — trace the full execution flow step by step
 4. For regressions: `gitnexus_detect_changes({scope: "compare", base_ref: "main"})` — see what your branch changed
 
 ## When Refactoring
@@ -138,10 +138,10 @@ This project is indexed by GitNexus as **AutoTrixel** (131 symbols, 379 relation
 
 | Resource | Use for |
 |----------|---------|
-| `gitnexus://repo/AutoTrixel/context` | Codebase overview, check index freshness |
-| `gitnexus://repo/AutoTrixel/clusters` | All functional areas |
-| `gitnexus://repo/AutoTrixel/processes` | All execution flows |
-| `gitnexus://repo/AutoTrixel/process/{name}` | Step-by-step execution trace |
+| `gitnexus://repo/TrKixel/context` | Codebase overview, check index freshness |
+| `gitnexus://repo/TrKixel/clusters` | All functional areas |
+| `gitnexus://repo/TrKixel/processes` | All execution flows |
+| `gitnexus://repo/TrKixel/process/{name}` | Step-by-step execution trace |
 
 ## Self-Check Before Finishing
 
@@ -171,8 +171,13 @@ To check whether embeddings exist, inspect `.gitnexus/meta.json` — the `stats.
 
 ## CLI
 
-- Re-index: `npx gitnexus analyze`
-- Check freshness: `npx gitnexus status`
-- Generate docs: `npx gitnexus wiki`
+| Task | Read this skill file |
+|------|---------------------|
+| Understand architecture / "How does X work?" | `.claude/skills/gitnexus/gitnexus-exploring/SKILL.md` |
+| Blast radius / "What breaks if I change X?" | `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
+| Trace bugs / "Why is X failing?" | `.claude/skills/gitnexus/gitnexus-debugging/SKILL.md` |
+| Rename / extract / split / refactor | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md` |
+| Tools, resources, schema reference | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md` |
+| Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
 
 <!-- gitnexus:end -->

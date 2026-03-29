@@ -7,7 +7,7 @@
     import VersionBadge from "./VersionBadge.vue";
 
     const props = defineProps({
-        autoTrixelInstance: {
+        trKixelInstance: {
             type: Object,
             default: null,
         },
@@ -30,15 +30,15 @@
     };
 
     const resetCanvas = () => {
-        props.autoTrixelInstance?.resetCanvas();
+        props.trKixelInstance?.resetCanvas();
     };
 
     const exportImage = () => {
-        props.autoTrixelInstance?.exportImage();
+        props.trKixelInstance?.exportImage();
     };
 
     const exportSVG = () => {
-        props.autoTrixelInstance?.exportSVG();
+        props.trKixelInstance?.exportSVG();
     };
 
     const updateBg = (prop, val) => {
@@ -74,10 +74,10 @@
         :class="{ '-ml-[calc(max(320px,20vw)+1px)]': !isOpen }">
         <h1 class="text-2xl text-primary uppercase tracking-widest flex items-center gap-2.5 m-0">
             <img
-                src="/AutoTrixel.svg"
-                alt="AutoTrixel Logo"
+                src="/TrKixel.svg"
+                alt="TrKixel Logo"
                 class="w-8 h-8" />
-            <span>Auto<span class="font-black">Trixel</span></span>
+            <span>Tr<span class="font-black">Kixel</span></span>
             <VersionBadge />
         </h1>
 
@@ -91,18 +91,18 @@
             <div class="flex justify-between mb-1 border-b border-black-light pb-0.5 last:border-none last:m-0"><span>BG Pan</span> <span class="bg-black px-1 py-0.5 rounded font-mono border border-black-light text-white-dark">Ctrl + Alt + Mid Drag</span></div>
         </div>
 
-        <ToolsControl :autoTrixelInstance="autoTrixelInstance" />
+        <ToolsControl :trKixelInstance="trKixelInstance" />
 
-        <PaintControls :autoTrixelInstance="autoTrixelInstance" />
+        <PaintControls :trKixelInstance="trKixelInstance" />
 
         <BackgroundControls
-            :autoTrixelInstance="autoTrixelInstance"
+            :trKixelInstance="trKixelInstance"
             :bgState="bgState"
             :controlMode="controlMode"
             @updateBg="updateBg"
             @setControlMode="setControlMode" />
 
-        <GridControls :autoTrixelInstance="autoTrixelInstance" />
+        <GridControls :trKixelInstance="trKixelInstance" />
 
         <div style="margin-top: auto">
             <button

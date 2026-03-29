@@ -1,8 +1,8 @@
-# AutoTrixel
+# TrKixel
 
 A web-based triangle-pixel art engine that renders images using triangular pixels instead of traditional square pixels. Create and manipulate unique triangle-based pixel art through an interactive web interface.
 
-![Screenshot of AutoTrixel](/src/assets/screenshot.png)
+![Screenshot of TrKixel](/src/assets/screenshot.png)
 
 ## 🎨 Features
 
@@ -74,7 +74,7 @@ Output triangle-pixel art in various formats with configurable resolution and tr
 
 ### Adding New Features
 
-1. **Rendering Logic**: Add/update logic in `src/logic/createAutoTrixel.js`
+1. **Rendering Logic**: Add/update logic in `src/logic/createTrKixel.js`
 2. **UI Components**: Create/update Vue components in `src/components/`
 3. **Styling**: Use Tailwind utilities in component templates
 4. **Testing**: Test across different browsers and devices

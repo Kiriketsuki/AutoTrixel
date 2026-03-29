@@ -4,7 +4,7 @@
     import TransitionExpand from "./TransitionExpand.vue";
 
     const props = defineProps({
-        autoTrixelInstance: Object,
+        trKixelInstance: Object,
     });
 
     const showMainGridStyle = ref(false);

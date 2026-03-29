@@ -4,7 +4,7 @@
     import TransitionExpand from "./TransitionExpand.vue";
 
     const props = defineProps({
-        autoTrixelInstance: Object,
+        trKixelInstance: Object,
         bgState: Object,
         controlMode: String,
     });
@@ -17,8 +17,8 @@
 
     const handleImageUpload = (e) => {
         const file = e.target.files[0];
-        if (file && props.autoTrixelInstance) {
-            props.autoTrixelInstance.setBackgroundImage(file);
+        if (file && props.trKixelInstance) {
+            props.trKixelInstance.setBackgroundImage(file);
         }
     };
 

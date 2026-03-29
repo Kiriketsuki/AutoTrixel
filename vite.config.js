@@ -8,7 +8,7 @@ const isTauri = process.env.TAURI_ENV_PLATFORM !== undefined;
 // https://vite.dev/config/
 export default defineConfig({
     plugins: [vue(), tailwindcss()],
-    base: isTauri ? "/" : "/AutoTrixel/",
+    base: isTauri ? "/" : "/TrKixel/",
 
     // Prevent Vite from obscuring Rust errors
     clearScreen: false,

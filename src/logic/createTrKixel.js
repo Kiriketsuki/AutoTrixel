@@ -5,9 +5,9 @@ import { fullRedraw, drawCursor } from "./autotrixel/drawing.js";
 import { exportImage, exportSVG, exportImageAsBlob, exportSVGAsString } from "./autotrixel/export.js";
 import { createEngine } from "../core/engine.js";
 
-export function createAutoTrixel(rootElement) {
+export function createTrKixel(rootElement) {
     if (!rootElement) {
-        throw new Error("AutoTrixel root element was not provided");
+        throw new Error("TrKixel root element was not provided");
     }
 
     // --- DOM selector cache ---
@@ -19,7 +19,7 @@ export function createAutoTrixel(rootElement) {
         }
         const el = rootElement.querySelector(selector);
         if (!el) {
-            throw new Error(`AutoTrixel init failed: missing element ${selector}`);
+            throw new Error(`TrKixel init failed: missing element ${selector}`);
         }
         selectorCache.set(selector, el);
         return el;
@@ -65,7 +65,7 @@ export function createAutoTrixel(rootElement) {
     const toolButtons = Array.from(rootElement.querySelectorAll(".tool-btn"));
 
     if (!artCtx || !cursorCtx) {
-        throw new Error("Failed to initialize AutoTrixel canvases");
+        throw new Error("Failed to initialize TrKixel canvases");
     }
 
     // --- Core engine ---
