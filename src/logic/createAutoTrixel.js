@@ -1000,5 +1000,14 @@ export function createAutoTrixel(rootElement) {
         },
         setTool,
         undoAction,
+        zoomIn: () => performZoom(0.1),
+        zoomOut: () => performZoom(-0.1),
+        resetZoom: () => {
+            zoomLevel = 1;
+            panOffsetX = 0;
+            panOffsetY = 0;
+            updateCanvasTransform();
+            showToast('Zoom: 100%');
+        },
     };
 }
