@@ -1,14 +1,16 @@
-import { REQUIRED_SELECTORS, DEFAULT_CONFIG } from "./autotrixel/constants.js";
+import { REQUIRED_SELECTORS } from "./autotrixel/constants.js";
 import { clamp, hexToOklchVals } from "./autotrixel/utils.js";
-import { pixelToGrid, getTriangleCluster, findBestCenterPixel, getTriangleVertices, getBarycentric } from "./autotrixel/geometry.js";
+import { getTriangleVertices, getBarycentric } from "./autotrixel/geometry.js";
 import { fullRedraw, drawCursor } from "./autotrixel/drawing.js";
-import { batchPaintCells, fillBucket, interpolateStroke } from "./autotrixel/actions.js";
-import { exportImage, exportSVG } from "./autotrixel/export.js";
+import { exportImage, exportSVG, exportImageAsBlob, exportSVGAsString } from "./autotrixel/export.js";
+import { createEngine } from "../core/engine.js";
 
 export function createAutoTrixel(rootElement) {
     if (!rootElement) {
         throw new Error("AutoTrixel root element was not provided");
     }
+
+    // --- DOM selector cache ---
 
     const selectorCache = new Map();
     const select = (selector) => {
@@ -38,7 +40,6 @@ export function createAutoTrixel(rootElement) {
     const hInput = select("#hInput");
     const colorPreviewBox = select("#colorPreviewBox");
     const colorCodeDisplay = select("#colorCodeDisplay");
-    // Palette is now handled in Vue
     const scaleSlider = select("#scaleSlider");
     const scaleNumber = select("#scaleNumber");
     const widthSlider = select("#widthSlider");
@@ -67,19 +68,20 @@ export function createAutoTrixel(rootElement) {
         throw new Error("Failed to initialize AutoTrixel canvases");
     }
 
+    // --- Core engine ---
+
+    const engine = createEngine();
+
+    // --- Browser-only state ---
+
     const windowListeners = [];
     const addWindowListener = (event, handler, options) => {
         window.addEventListener(event, handler, options);
         windowListeners.push(() => window.removeEventListener(event, handler, options));
     };
 
-    const config = { ...DEFAULT_CONFIG };
-
-    let gridData = {};
     let hoveredCells = [];
     let isDrawing = false;
-    let currentTool = "pencil";
-    let storedBrushSize = 1;
     let lastMouseX = 0;
     let lastMouseY = 0;
 
@@ -95,19 +97,9 @@ export function createAutoTrixel(rootElement) {
     let bgPanStartY = 0;
     let startBgX = 0;
     let startBgY = 0;
-    let controlMode = "canvas"; // 'canvas' or 'background'
+    let controlMode = "canvas";
 
-    let historyQueue = [];
-    const MAX_HISTORY = 10;
     let tempSnapshot = null;
-
-    let colorState = { l: 0.6, c: 0.15, h: 200 };
-    let currentCssColor = "oklch(60% 0.15 200)";
-    let currentFill = currentCssColor; // Can be string (color) or object { type: 'image', imageId: '...', ... }
-    const imageRegistry = new Map(); // id -> HTMLImageElement
-
-    let triHeight;
-    let W_half;
     let toastTimeout = null;
 
     let bgImage = {
@@ -120,24 +112,31 @@ export function createAutoTrixel(rootElement) {
 
     let zoomLevel = 1;
 
+    // --- Helpers ---
+
+    function redraw() {
+        const config = engine.getConfig();
+        const { triHeight, W_half } = engine.getDerived();
+        fullRedraw(artCtx, artCanvas, engine.getGridData(), config, triHeight, W_half, bgImage, engine.getImageRegistry());
+    }
+
+    function redrawCursor() {
+        const { triHeight, W_half } = engine.getDerived();
+        drawCursor(cursorCtx, cursorCanvas, hoveredCells, engine.getTool(), triHeight, W_half);
+    }
+
     function updateDimensions() {
-        triHeight = (config.triSide * Math.sqrt(3)) / 2;
-        W_half = config.triSide / 2;
+        engine.updateConfig({});
+        const config = engine.getConfig();
 
-        config.widthTriangles = Math.ceil(config.width / W_half);
-        config.heightTriangles = Math.ceil(config.height / triHeight);
+        artCanvas.width = config.width;
+        artCanvas.height = config.height;
+        cursorCanvas.width = config.width;
+        cursorCanvas.height = config.height;
 
-        const w = config.width;
-        const h = config.height;
-
-        artCanvas.width = w;
-        artCanvas.height = h;
-        cursorCanvas.width = w;
-        cursorCanvas.height = h;
-
-        canvasStack.style.width = `${w}px`;
-        canvasStack.style.height = `${h}px`;
-        fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
+        canvasStack.style.width = `${config.width}px`;
+        canvasStack.style.height = `${config.height}px`;
+        redraw();
     }
 
     function updateCanvasTransform() {
@@ -153,38 +152,24 @@ export function createAutoTrixel(rootElement) {
         toastTimeout = window.setTimeout(() => toast.classList.remove("show"), 1500);
     }
 
-    function saveStateForUndo() {
-        return JSON.stringify(gridData);
-    }
-
-    function pushToHistory(snapshot) {
-        historyQueue.push(snapshot);
-        if (historyQueue.length > MAX_HISTORY) {
-            historyQueue.shift();
-        }
-        updateUndoButton();
+    function updateUndoButton() {
+        const canUndo = engine.canUndo();
+        btnUndo.disabled = !canUndo;
+        btnUndo.style.opacity = canUndo ? "1" : "0.5";
     }
 
     function undoAction() {
-        if (historyQueue.length === 0) {
+        if (engine.undo()) {
+            redraw();
+            updateUndoButton();
+            showToast("Undo");
+        } else {
             showToast("Nothing to Undo");
-            return;
         }
-        const previousState = historyQueue.pop();
-        gridData = JSON.parse(previousState);
-        fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
-        updateUndoButton();
-        showToast("Undo");
     }
 
-    function updateUndoButton() {
-        btnUndo.disabled = historyQueue.length === 0;
-        btnUndo.style.opacity = historyQueue.length === 0 ? "0.5" : "1";
-    }
-
-    function updateColorUI(cssString) {
-        currentCssColor = cssString;
-        currentFill = cssString; // Switch back to color mode
+    let updateColorUI = function (cssString) {
+        const colorState = engine.getColor();
         colorPreviewBox.style.backgroundColor = cssString;
         colorPreviewBox.style.backgroundImage = "none";
         colorPreviewBox.style.backgroundColor = cssString;
@@ -198,14 +183,13 @@ export function createAutoTrixel(rootElement) {
             colorCodeDisplay.innerText = `L:${Math.round(colorState.l * 100)} C:${colorState.c.toFixed(2)} H:${Math.round(colorState.h)}`;
         }
 
-        if (currentTool === "eraser" || currentTool === "picker" || currentTool === "subdivide") {
+        if (engine.getTool() === "eraser" || engine.getTool() === "picker" || engine.getTool() === "subdivide") {
             setTool("pencil");
         }
-    }
+    };
 
     function syncColorFromHex(hex) {
-        const vals = hexToOklchVals(hex);
-        colorState = { l: vals.l, c: vals.c, h: vals.h };
+        engine.setColorFromHex(hex);
         updateColorUI(hex);
     }
 
@@ -214,13 +198,12 @@ export function createAutoTrixel(rootElement) {
         const C = parseFloat(cInput.value);
         const H = parseFloat(hInput.value);
 
-        colorState = { l: L, c: C, h: H };
-        const cssStr = `oklch(${Math.round(L * 100)}% ${C} ${Math.round(H)})`;
-        updateColorUI(cssStr);
+        engine.setColor(L, C, H);
+        updateColorUI(engine.getCssColor());
     }
 
     function setTool(tool) {
-        currentTool = tool;
+        engine.setTool(tool);
         toolButtons.forEach((button) => button.classList.remove("active"));
         const activeButton = rootElement.querySelector(`#tool-${tool}`);
         if (activeButton) {
@@ -230,37 +213,38 @@ export function createAutoTrixel(rootElement) {
         cursorCanvas.style.cursor = "crosshair";
 
         if (tool === "pencil" || tool === "eraser") {
-            config.brushSize = storedBrushSize;
-            brushInput.value = storedBrushSize;
-            brushVal.innerText = storedBrushSize;
+            const bs = engine.getBrushSize();
+            brushInput.value = bs;
+            brushVal.innerText = bs;
         }
 
-        drawCursor(cursorCtx, cursorCanvas, hoveredCells, currentTool, triHeight, W_half);
+        redrawCursor();
     }
 
     function updateBrushSize(change) {
-        let newSize = currentTool === "picker" || currentTool === "bucket" ? storedBrushSize : config.brushSize;
+        const currentTool = engine.getTool();
+        let newSize = currentTool === "picker" || currentTool === "bucket" ? engine.getStoredBrushSize() : engine.getBrushSize();
         newSize = clamp(newSize + change, 1, 5);
 
-        if (newSize !== config.brushSize) {
+        if (newSize !== engine.getBrushSize()) {
             if (currentTool === "picker" || currentTool === "bucket") {
-                storedBrushSize = newSize;
+                engine.setStoredBrushSize(newSize);
                 showToast(`Saved Brush Size: ${newSize}`);
             } else {
-                config.brushSize = newSize;
-                storedBrushSize = newSize;
+                engine.setBrushSize(newSize);
                 brushInput.value = newSize;
                 brushVal.innerText = newSize;
-                drawCursor(cursorCtx, cursorCanvas, hoveredCells, currentTool, triHeight, W_half);
+                redrawCursor();
                 showToast(`Brush Size: ${newSize}`);
             }
         }
     }
 
     function scale(change) {
+        const config = engine.getConfig();
         const newSize = clamp(config.triSide + change, 5, 200);
         if (newSize !== config.triSide) {
-            config.triSide = newSize;
+            engine.updateConfig({ triSide: newSize });
             scaleSlider.value = newSize;
             scaleNumber.value = newSize;
             updateDimensions();
@@ -277,142 +261,28 @@ export function createAutoTrixel(rootElement) {
         }
     }
 
-    function processSubdivision(gridData, key, p, r, c, tool, color, triHeight, W_half) {
-        let data = gridData[key];
-
-        // Prevent further subdivision if already subdivided
-        if (tool === "subdivide" && data && data.subdivided) {
-            return data;
-        }
-
-        // Prevent subdivision of images for now
-        if (tool === "subdivide" && data && data.type === "image") {
-            return data;
-        }
-
-        const vertices = getTriangleVertices(r, c, triHeight, W_half);
-
-        const updateRecursive = (node, p, v0, v1, v2) => {
-            if (!node || typeof node !== "object" || !node.subdivided) {
-                if (tool === "subdivide") {
-                    const baseColor = node || null;
-                    return {
-                        subdivided: true,
-                        children: [baseColor, baseColor, baseColor, baseColor],
-                    };
-                } else {
-                    return tool === "eraser" ? null : color;
-                }
-            }
-
-            if (node.subdivided) {
-                const m01 = { x: (v0.x + v1.x) / 2, y: (v0.y + v1.y) / 2 };
-                const m12 = { x: (v1.x + v2.x) / 2, y: (v1.y + v2.y) / 2 };
-                const m20 = { x: (v2.x + v0.x) / 2, y: (v2.y + v0.y) / 2 };
-
-                const { u, v, w } = getBarycentric(p, v0, v1, v2);
-
-                let childIndex = 3;
-                let nextV0, nextV1, nextV2;
-
-                if (u > 0.5) {
-                    childIndex = 0;
-                    nextV0 = v0;
-                    nextV1 = m01;
-                    nextV2 = m20;
-                } else if (v > 0.5) {
-                    childIndex = 1;
-                    nextV0 = m01;
-                    nextV1 = v1;
-                    nextV2 = m12;
-                } else if (w > 0.5) {
-                    childIndex = 2;
-                    nextV0 = m20;
-                    nextV1 = m12;
-                    nextV2 = v2;
-                } else {
-                    childIndex = 3;
-                    nextV0 = m01;
-                    nextV1 = m12;
-                    nextV2 = m20;
-                }
-
-                const newChildren = [...node.children];
-                newChildren[childIndex] = updateRecursive(newChildren[childIndex], p, nextV0, nextV1, nextV2);
-                return { ...node, children: newChildren };
-            }
-            return node;
-        };
-
-        return updateRecursive(data, p, vertices[0], vertices[1], vertices[2]);
-    }
+    // --- Click/draw handling ---
 
     function handleSingleClick() {
         if (hoveredCells.length === 0) return false;
 
+        const currentTool = engine.getTool();
+        const gridData = engine.getGridData();
+        const currentFill = engine.getFill();
         let didChange = false;
 
         if (currentTool === "bucket") {
             const cell = hoveredCells[0];
-            didChange = fillBucket(cell.r, cell.c, currentFill, gridData, config);
+            didChange = engine.fillAtCell(cell.r, cell.c);
         } else if (currentTool === "picker") {
             const cell = hoveredCells[0];
             const key = `${cell.r},${cell.c}`;
             const color = gridData[key];
             if (color) {
-                // Handle picking from subdivided?
-                // For now, picker just picks the base color or fails if subdivided.
-                // To support picking from subdivided, we'd need to drill down.
-                // Let's keep it simple for now or use the first child if subdivided.
                 let picked = color;
                 if (typeof color === "object" && color.subdivided) {
-                    // Just pick the first non-null child or something?
-                    // Or maybe we don't support picking from subdivided yet.
-                    // Let's try to pick recursively?
-                    // Without mouse coords, we can't know which sub-pixel.
-                    // But handleSingleClick is called from mousedown which has coords.
-                    // But handleSingleClick doesn't take coords.
-                    // We can use lastMouseX, lastMouseY.
-
-                    const vertices = getTriangleVertices(cell.r, cell.c, triHeight, W_half);
                     const p = { x: lastMouseX, y: lastMouseY };
-
-                    const pickRecursive = (node, p, v0, v1, v2) => {
-                        if (typeof node === "string") return node;
-                        if (!node) return null;
-                        if (node.subdivided) {
-                            const m01 = { x: (v0.x + v1.x) / 2, y: (v0.y + v1.y) / 2 };
-                            const m12 = { x: (v1.x + v2.x) / 2, y: (v1.y + v2.y) / 2 };
-                            const m20 = { x: (v2.x + v0.x) / 2, y: (v2.y + v0.y) / 2 };
-                            const { u, v, w } = getBarycentric(p, v0, v1, v2);
-                            let childIndex = 3;
-                            let nextV0, nextV1, nextV2;
-                            if (u > 0.5) {
-                                childIndex = 0;
-                                nextV0 = v0;
-                                nextV1 = m01;
-                                nextV2 = m20;
-                            } else if (v > 0.5) {
-                                childIndex = 1;
-                                nextV0 = m01;
-                                nextV1 = v1;
-                                nextV2 = m12;
-                            } else if (w > 0.5) {
-                                childIndex = 2;
-                                nextV0 = m20;
-                                nextV1 = m12;
-                                nextV2 = v2;
-                            } else {
-                                childIndex = 3;
-                                nextV0 = m01;
-                                nextV1 = m12;
-                                nextV2 = m20;
-                            }
-                            return pickRecursive(node.children[childIndex], p, nextV0, nextV1, nextV2);
-                        }
-                        return null;
-                    };
-                    picked = pickRecursive(color, p, vertices[0], vertices[1], vertices[2]);
+                    picked = engine.pickFromSubdivided(color, p, cell.r, cell.c);
                 }
 
                 if (picked) {
@@ -421,11 +291,7 @@ export function createAutoTrixel(rootElement) {
                     } else if (picked.startsWith("oklch")) {
                         const matches = picked.match(/oklch\(([^%]+)%\s+([\d.]+)\s+([\d.]+)\)/);
                         if (matches) {
-                            colorState = {
-                                l: parseFloat(matches[1]) / 100,
-                                c: parseFloat(matches[2]),
-                                h: parseFloat(matches[3]),
-                            };
+                            engine.setColor(parseFloat(matches[1]) / 100, parseFloat(matches[2]), parseFloat(matches[3]));
                             updateColorUI(picked);
                         }
                     }
@@ -433,11 +299,12 @@ export function createAutoTrixel(rootElement) {
                 }
             }
         } else {
+            const config = engine.getConfig();
             if (config.brushSize === 1 && (currentTool === "subdivide" || currentTool === "pencil" || currentTool === "eraser")) {
                 const cell = hoveredCells[0];
                 const key = `${cell.r},${cell.c}`;
                 const p = { x: lastMouseX, y: lastMouseY };
-                const newData = processSubdivision(gridData, key, p, cell.r, cell.c, currentTool, currentFill, triHeight, W_half);
+                const newData = engine.processSubdivision(key, p, cell.r, cell.c, currentTool, currentFill);
                 if (JSON.stringify(gridData[key]) !== JSON.stringify(newData)) {
                     gridData[key] = newData;
                     didChange = true;
@@ -453,22 +320,130 @@ export function createAutoTrixel(rootElement) {
                         }
                     });
                 } else {
-                    didChange = batchPaintCells(hoveredCells, currentTool, gridData, currentFill);
+                    didChange = engine.paintCells(hoveredCells);
                 }
             }
         }
 
         if (didChange) {
-            fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
+            redraw();
         }
         return didChange;
     }
+
+    // --- Subdivision hover detection ---
+
+    function detectSubdivisionHover(cell, x, y) {
+        const gridData = engine.getGridData();
+        const key = `${cell.r},${cell.c}`;
+        const data = gridData[key];
+        if (data && data.subdivided) {
+            const { triHeight, W_half } = engine.getDerived();
+            const vertices = getTriangleVertices(cell.r, cell.c, triHeight, W_half);
+            const [v0, v1, v2] = vertices;
+            const m01 = { x: (v0.x + v1.x) / 2, y: (v0.y + v1.y) / 2 };
+            const m12 = { x: (v1.x + v2.x) / 2, y: (v1.y + v2.y) / 2 };
+            const m20 = { x: (v2.x + v0.x) / 2, y: (v2.y + v0.y) / 2 };
+
+            const p = { x, y };
+            const { u, v, w } = getBarycentric(p, v0, v1, v2);
+
+            let subVertices;
+            if (u > 0.5) {
+                subVertices = [v0, m01, m20];
+            } else if (v > 0.5) {
+                subVertices = [m01, v1, m12];
+            } else if (w > 0.5) {
+                subVertices = [m20, m12, v2];
+            } else {
+                subVertices = [m01, m12, m20];
+            }
+            hoveredCells[0].subVertices = subVertices;
+        }
+    }
+
+    // --- Drawing during drag ---
+
+    function handleDrawingMove(x, y) {
+        const currentTool = engine.getTool();
+        const gridData = engine.getGridData();
+        const config = engine.getConfig();
+        const currentFill = engine.getFill();
+
+        if (config.brushSize === 1 && (currentTool === "subdivide" || currentTool === "pencil" || currentTool === "eraser")) {
+            const dx = x - lastMouseX;
+            const dy = y - lastMouseY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const steps = Math.ceil(dist / 2);
+
+            let didChange = false;
+            for (let i = 0; i <= steps; i++) {
+                const t = steps === 0 ? 0 : i / steps;
+                const px = lastMouseX + dx * t;
+                const py = lastMouseY + dy * t;
+                const c = engine.pixelToGrid(px, py);
+                if (c) {
+                    const key = `${c.r},${c.c}`;
+                    const newData = engine.processSubdivision(key, { x: px, y: py }, c.r, c.c, currentTool, currentFill);
+                    if (JSON.stringify(gridData[key]) !== JSON.stringify(newData)) {
+                        gridData[key] = newData;
+                        didChange = true;
+                    }
+                }
+            }
+            if (didChange) redraw();
+        } else {
+            const cellsToPaint = engine.interpolateStroke(lastMouseX, lastMouseY, x, y);
+            if (cellsToPaint.length > 0) {
+                if (currentTool === "subdivide") {
+                    let didChange = false;
+                    cellsToPaint.forEach((c) => {
+                        const key = `${c.r},${c.c}`;
+                        if (!gridData[key] || typeof gridData[key] === "string") {
+                            const base = gridData[key] || null;
+                            gridData[key] = { subdivided: true, children: [base, base, base, base] };
+                            didChange = true;
+                        }
+                    });
+                    if (didChange) redraw();
+                } else {
+                    const didChange = engine.paintCells(cellsToPaint);
+                    if (didChange) redraw();
+                }
+            }
+        }
+    }
+
+    // --- Hover tracking ---
+
+    function updateHoverFromPosition(x, y) {
+        const currentTool = engine.getTool();
+        const config = engine.getConfig();
+        const cell = engine.pixelToGrid(x, y);
+
+        if (cell) {
+            const useSize = currentTool === "picker" || currentTool === "bucket" ? 1 : config.brushSize;
+            let anchor = { r: cell.r, c: cell.c };
+            if (useSize > 1) {
+                anchor = engine.findBestCenterPixel(x, y, useSize) || anchor;
+            }
+            hoveredCells = engine.getTriangleCluster(anchor.r, anchor.c, useSize);
+
+            if (useSize === 1 && hoveredCells.length === 1) {
+                detectSubdivisionHover(cell, x, y);
+            }
+        } else {
+            hoveredCells = [];
+        }
+        redrawCursor();
+    }
+
+    // --- Events ---
 
     function setupEvents() {
         cursorCanvas.addEventListener("mousedown", (e) => {
             if (e.button === 1) {
                 e.preventDefault();
-                // Check for BG Pan Shortcut: Ctrl + Alt + Middle Click
                 if ((e.ctrlKey && e.altKey) || controlMode === "background") {
                     isBgPanning = true;
                     bgPanStartX = e.clientX;
@@ -491,7 +466,7 @@ export function createAutoTrixel(rootElement) {
             lastMouseX = (e.clientX - rect.left) / zoomLevel;
             lastMouseY = (e.clientY - rect.top) / zoomLevel;
 
-            tempSnapshot = saveStateForUndo();
+            tempSnapshot = engine.saveSnapshot();
             isDrawing = true;
 
             handleSingleClick();
@@ -511,9 +486,10 @@ export function createAutoTrixel(rootElement) {
 
             if (isDrawing) {
                 isDrawing = false;
-                const newState = JSON.stringify(gridData);
+                const newState = JSON.stringify(engine.getGridData());
                 if (newState !== tempSnapshot) {
-                    pushToHistory(tempSnapshot);
+                    engine.pushToHistory(tempSnapshot);
+                    updateUndoButton();
                 }
             }
         });
@@ -533,7 +509,7 @@ export function createAutoTrixel(rootElement) {
                 const dy = e.clientY - bgPanStartY;
                 bgImage.x = startBgX + dx;
                 bgImage.y = startBgY + dy;
-                fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
+                redraw();
                 notifyBgChange();
                 return;
             }
@@ -542,92 +518,11 @@ export function createAutoTrixel(rootElement) {
             const x = (e.clientX - rect.left) / zoomLevel;
             const y = (e.clientY - rect.top) / zoomLevel;
 
-            const cell = pixelToGrid(x, y, triHeight, W_half, config);
+            updateHoverFromPosition(x, y);
 
-            if (cell) {
-                const useSize = currentTool === "picker" || currentTool === "bucket" ? 1 : config.brushSize;
-                let anchor = { r: cell.r, c: cell.c };
-                if (useSize > 1) {
-                    // Use pixel-based centering for better accuracy
-                    anchor = findBestCenterPixel(x, y, useSize, config, triHeight, W_half) || anchor;
-                }
-                hoveredCells = getTriangleCluster(anchor.r, anchor.c, useSize, config);
-
-                if (useSize === 1 && hoveredCells.length === 1) {
-                    const key = `${cell.r},${cell.c}`;
-                    const data = gridData[key];
-                    if (data && data.subdivided) {
-                        const vertices = getTriangleVertices(cell.r, cell.c, triHeight, W_half);
-                        const [v0, v1, v2] = vertices;
-                        const m01 = { x: (v0.x + v1.x) / 2, y: (v0.y + v1.y) / 2 };
-                        const m12 = { x: (v1.x + v2.x) / 2, y: (v1.y + v2.y) / 2 };
-                        const m20 = { x: (v2.x + v0.x) / 2, y: (v2.y + v0.y) / 2 };
-
-                        const p = { x: x, y: y };
-                        const { u, v, w } = getBarycentric(p, v0, v1, v2);
-
-                        let subVertices;
-                        if (u > 0.5) {
-                            subVertices = [v0, m01, m20];
-                        } else if (v > 0.5) {
-                            subVertices = [m01, v1, m12];
-                        } else if (w > 0.5) {
-                            subVertices = [m20, m12, v2];
-                        } else {
-                            subVertices = [m01, m12, m20];
-                        }
-                        hoveredCells[0].subVertices = subVertices;
-                    }
-                }
-            } else {
-                hoveredCells = [];
-            }
-            drawCursor(cursorCtx, cursorCanvas, hoveredCells, currentTool, triHeight, W_half);
-
+            const currentTool = engine.getTool();
             if (isDrawing && currentTool !== "bucket" && currentTool !== "picker") {
-                if (config.brushSize === 1 && (currentTool === "subdivide" || currentTool === "pencil" || currentTool === "eraser")) {
-                    const dx = x - lastMouseX;
-                    const dy = y - lastMouseY;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-                    const steps = Math.ceil(dist / 2);
-
-                    let didChange = false;
-                    for (let i = 0; i <= steps; i++) {
-                        const t = steps === 0 ? 0 : i / steps;
-                        const px = lastMouseX + dx * t;
-                        const py = lastMouseY + dy * t;
-                        const c = pixelToGrid(px, py, triHeight, W_half, config);
-                        if (c) {
-                            const key = `${c.r},${c.c}`;
-                            const newData = processSubdivision(gridData, key, { x: px, y: py }, c.r, c.c, currentTool, currentFill, triHeight, W_half);
-                            if (JSON.stringify(gridData[key]) !== JSON.stringify(newData)) {
-                                gridData[key] = newData;
-                                didChange = true;
-                            }
-                        }
-                    }
-                    if (didChange) fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
-                } else {
-                    const cellsToPaint = interpolateStroke(lastMouseX, lastMouseY, x, y, currentTool, config, triHeight, W_half);
-                    if (cellsToPaint.length > 0) {
-                        if (currentTool === "subdivide") {
-                            let didChange = false;
-                            cellsToPaint.forEach((c) => {
-                                const key = `${c.r},${c.c}`;
-                                // Only subdivide if not already subdivided
-                                if (!gridData[key] || typeof gridData[key] === "string") {
-                                    const base = gridData[key] || null;
-                                    gridData[key] = { subdivided: true, children: [base, base, base, base] };
-                                    didChange = true;
-                                }
-                            });
-                            if (didChange) fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
-                        } else {
-                            const didChange = batchPaintCells(cellsToPaint, currentTool, gridData, currentFill);
-                            if (didChange) fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
-                        }
-                    }
-                }
+                handleDrawingMove(x, y);
             }
 
             lastMouseX = x;
@@ -636,7 +531,7 @@ export function createAutoTrixel(rootElement) {
 
         cursorCanvas.addEventListener("mouseleave", () => {
             hoveredCells = [];
-            drawCursor(cursorCtx, cursorCanvas, hoveredCells, currentTool, triHeight, W_half);
+            redrawCursor();
         });
 
         cursorCanvas.addEventListener("mouseenter", (e) => {
@@ -669,17 +564,19 @@ export function createAutoTrixel(rootElement) {
                     lastMouseX = (touch.clientX - rect.left) / zoomLevel;
                     lastMouseY = (touch.clientY - rect.top) / zoomLevel;
 
-                    tempSnapshot = saveStateForUndo();
+                    tempSnapshot = engine.saveSnapshot();
                     isDrawing = true;
 
-                    const cell = pixelToGrid(lastMouseX, lastMouseY, triHeight, W_half, config);
+                    const cell = engine.pixelToGrid(lastMouseX, lastMouseY);
                     if (cell) {
+                        const currentTool = engine.getTool();
+                        const config = engine.getConfig();
                         const useSize = currentTool === "picker" || currentTool === "bucket" ? 1 : config.brushSize;
                         let anchor = { r: cell.r, c: cell.c };
                         if (useSize > 1) {
-                            anchor = findBestCenter(cell.r, cell.c, useSize, config);
+                            anchor = engine.findBestCenter(cell.r, cell.c, useSize);
                         }
-                        hoveredCells = getTriangleCluster(anchor.r, anchor.c, useSize, config);
+                        hoveredCells = engine.getTriangleCluster(anchor.r, anchor.c, useSize);
                     } else {
                         hoveredCells = [];
                     }
@@ -713,90 +610,11 @@ export function createAutoTrixel(rootElement) {
                     const x = (touch.clientX - rect.left) / zoomLevel;
                     const y = (touch.clientY - rect.top) / zoomLevel;
 
-                    const cell = pixelToGrid(x, y, triHeight, W_half, config);
-                    if (cell) {
-                        const useSize = currentTool === "picker" || currentTool === "bucket" ? 1 : config.brushSize;
-                        let anchor = { r: cell.r, c: cell.c };
-                        if (useSize > 1) {
-                            // Use pixel-based centering for better accuracy
-                            anchor = findBestCenterPixel(x, y, useSize, config, triHeight, W_half) || anchor;
-                        }
-                        hoveredCells = getTriangleCluster(anchor.r, anchor.c, useSize, config);
+                    updateHoverFromPosition(x, y);
 
-                        if (useSize === 1 && hoveredCells.length === 1) {
-                            const key = `${cell.r},${cell.c}`;
-                            const data = gridData[key];
-                            if (data && data.subdivided) {
-                                const vertices = getTriangleVertices(cell.r, cell.c, triHeight, W_half);
-                                const [v0, v1, v2] = vertices;
-                                const m01 = { x: (v0.x + v1.x) / 2, y: (v0.y + v1.y) / 2 };
-                                const m12 = { x: (v1.x + v2.x) / 2, y: (v1.y + v2.y) / 2 };
-                                const m20 = { x: (v2.x + v0.x) / 2, y: (v2.y + v0.y) / 2 };
-
-                                const p = { x: x, y: y };
-                                const { u, v, w } = getBarycentric(p, v0, v1, v2);
-
-                                let subVertices;
-                                if (u > 0.5) {
-                                    subVertices = [v0, m01, m20];
-                                } else if (v > 0.5) {
-                                    subVertices = [m01, v1, m12];
-                                } else if (w > 0.5) {
-                                    subVertices = [m20, m12, v2];
-                                } else {
-                                    subVertices = [m01, m12, m20];
-                                }
-                                hoveredCells[0].subVertices = subVertices;
-                            }
-                        }
-                    } else {
-                        hoveredCells = [];
-                    }
-
+                    const currentTool = engine.getTool();
                     if (isDrawing && currentTool !== "bucket" && currentTool !== "picker") {
-                        if (config.brushSize === 1 && (currentTool === "subdivide" || currentTool === "pencil" || currentTool === "eraser")) {
-                            const dx = x - lastMouseX;
-                            const dy = y - lastMouseY;
-                            const dist = Math.sqrt(dx * dx + dy * dy);
-                            const steps = Math.ceil(dist / 2);
-
-                            let didChange = false;
-                            for (let i = 0; i <= steps; i++) {
-                                const t = steps === 0 ? 0 : i / steps;
-                                const px = lastMouseX + dx * t;
-                                const py = lastMouseY + dy * t;
-                                const c = pixelToGrid(px, py, triHeight, W_half, config);
-                                if (c) {
-                                    const key = `${c.r},${c.c}`;
-                                    const newData = processSubdivision(gridData, key, { x: px, y: py }, c.r, c.c, currentTool, currentFill, triHeight, W_half);
-                                    if (JSON.stringify(gridData[key]) !== JSON.stringify(newData)) {
-                                        gridData[key] = newData;
-                                        didChange = true;
-                                    }
-                                }
-                            }
-                            if (didChange) fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
-                        } else {
-                            const cellsToPaint = interpolateStroke(lastMouseX, lastMouseY, x, y, currentTool, config, triHeight, W_half);
-                            if (cellsToPaint.length > 0) {
-                                if (currentTool === "subdivide") {
-                                    let didChange = false;
-                                    cellsToPaint.forEach((c) => {
-                                        const key = `${c.r},${c.c}`;
-                                        // Only subdivide if not already subdivided
-                                        if (!gridData[key] || typeof gridData[key] === "string") {
-                                            const base = gridData[key] || null;
-                                            gridData[key] = { subdivided: true, children: [base, base, base, base] };
-                                            didChange = true;
-                                        }
-                                    });
-                                    if (didChange) fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
-                                } else {
-                                    const didChange = batchPaintCells(cellsToPaint, currentTool, gridData, currentFill);
-                                    if (didChange) fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
-                                }
-                            }
-                        }
+                        handleDrawingMove(x, y);
                     }
                     lastMouseX = x;
                     lastMouseY = y;
@@ -811,9 +629,10 @@ export function createAutoTrixel(rootElement) {
             }
             if (isDrawing) {
                 isDrawing = false;
-                const newState = JSON.stringify(gridData);
+                const newState = JSON.stringify(engine.getGridData());
                 if (newState !== tempSnapshot) {
-                    pushToHistory(tempSnapshot);
+                    engine.pushToHistory(tempSnapshot);
+                    updateUndoButton();
                 }
             }
         });
@@ -846,30 +665,28 @@ export function createAutoTrixel(rootElement) {
                 }
             } else {
                 if (controlMode === "background") {
-                    // Background Pan with Arrow Keys
                     if (e.key === "ArrowUp") {
                         e.preventDefault();
                         bgImage.y -= 10;
-                        fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
+                        redraw();
                         notifyBgChange();
                     } else if (e.key === "ArrowDown") {
                         e.preventDefault();
                         bgImage.y += 10;
-                        fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
+                        redraw();
                         notifyBgChange();
                     } else if (e.key === "ArrowLeft") {
                         e.preventDefault();
                         bgImage.x -= 10;
-                        fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
+                        redraw();
                         notifyBgChange();
                     } else if (e.key === "ArrowRight") {
                         e.preventDefault();
                         bgImage.x += 10;
-                        fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
+                        redraw();
                         notifyBgChange();
                     }
                 } else {
-                    // Canvas Pan with Arrow Keys
                     if (e.key === "ArrowUp") {
                         e.preventDefault();
                         panOffsetY -= 20;
@@ -897,18 +714,15 @@ export function createAutoTrixel(rootElement) {
                 if (e.ctrlKey) {
                     e.preventDefault();
                     if (e.shiftKey) {
-                        // Ctrl + Shift + Scroll -> Scale (Triangle Size)
                         const delta = e.deltaY < 0 ? 1 : -1;
                         scale(delta * 5);
                     } else if (e.altKey) {
-                        // Ctrl + Alt + Scroll -> BG Scale
                         const delta = e.deltaY < 0 ? 0.1 : -0.1;
                         bgImage.scale = clamp(bgImage.scale + delta, 0.1, 5);
-                        fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
+                        redraw();
                         notifyBgChange();
                         showToast(`BG Scale: ${bgImage.scale.toFixed(2)}`);
                     } else {
-                        // Ctrl + Scroll -> Zoom (Canvas Zoom)
                         const delta = e.deltaY < 0 ? 0.1 : -0.1;
                         performZoom(delta);
                     }
@@ -918,7 +732,7 @@ export function createAutoTrixel(rootElement) {
         );
 
         const updateScale = (val) => {
-            config.triSide = parseInt(val, 10);
+            engine.updateConfig({ triSide: parseInt(val, 10) });
             scaleSlider.value = val;
             scaleNumber.value = val;
             updateDimensions();
@@ -928,13 +742,12 @@ export function createAutoTrixel(rootElement) {
 
         brushInput.addEventListener("input", (e) => {
             const val = parseInt(e.target.value, 10);
-            config.brushSize = val;
-            storedBrushSize = val;
+            engine.setBrushSize(val);
             brushVal.innerText = val;
         });
 
         const updateWidth = (val) => {
-            config.width = parseInt(val, 10);
+            engine.updateConfig({ width: parseInt(val, 10) });
             widthSlider.value = val;
             widthNumber.value = val;
             updateDimensions();
@@ -943,7 +756,7 @@ export function createAutoTrixel(rootElement) {
         widthNumber.addEventListener("input", (e) => updateWidth(e.target.value));
 
         const updateHeight = (val) => {
-            config.height = parseInt(val, 10);
+            engine.updateConfig({ height: parseInt(val, 10) });
             heightSlider.value = val;
             heightNumber.value = val;
             updateDimensions();
@@ -952,75 +765,73 @@ export function createAutoTrixel(rootElement) {
         heightNumber.addEventListener("input", (e) => updateHeight(e.target.value));
 
         gridToggle.addEventListener("change", (e) => {
-            config.showGrid = e.target.checked;
-            fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
+            engine.updateConfig({ showGrid: e.target.checked });
+            redraw();
         });
 
         gridColorPicker.addEventListener("input", (e) => {
-            // Resolve CSS variable if needed
             let color = e.target.value;
             if (color.startsWith("var(")) {
                 const varName = color.match(/var\(([^)]+)\)/)[1];
                 color = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
             }
-            config.gridColor = color;
-            fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
+            engine.updateConfig({ gridColor: color });
+            redraw();
         });
 
         gridStyleSelect.addEventListener("change", (e) => {
-            config.gridStyle = e.target.value;
-            fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
+            engine.updateConfig({ gridStyle: e.target.value });
+            redraw();
         });
 
         gridThicknessSlider.addEventListener("input", (e) => {
             let val = parseFloat(e.target.value);
             val = clamp(val, 0.1, 1.5);
-            config.gridThickness = val;
+            engine.updateConfig({ gridThickness: val });
             gridThicknessVal.innerText = val;
-            fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
+            redraw();
         });
 
         gridOpacitySlider.addEventListener("input", (e) => {
             const val = parseFloat(e.target.value);
-            config.gridOpacity = val;
+            engine.updateConfig({ gridOpacity: val });
             gridOpacityVal.innerText = val;
-            fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
+            redraw();
         });
 
         subGridStyleSelect.addEventListener("change", (e) => {
-            config.subGridStyle = e.target.value;
-            fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
+            engine.updateConfig({ subGridStyle: e.target.value });
+            redraw();
         });
 
         subGridThicknessSlider.addEventListener("input", (e) => {
             let val = parseFloat(e.target.value);
             val = clamp(val, 0.1, 1.5);
-            config.subGridThickness = val;
+            engine.updateConfig({ subGridThickness: val });
             subGridThicknessVal.innerText = val;
-            fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
+            redraw();
         });
 
         subGridOpacitySlider.addEventListener("input", (e) => {
             const val = parseFloat(e.target.value);
-            config.subGridOpacity = val;
+            engine.updateConfig({ subGridOpacity: val });
             subGridOpacityVal.innerText = val;
-            fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
+            redraw();
         });
 
         subGridToggle.addEventListener("change", (e) => {
-            config.showSubGrid = e.target.checked;
-            fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
+            engine.updateConfig({ showSubGrid: e.target.checked });
+            redraw();
         });
 
         subGridColorPicker.addEventListener("input", (e) => {
-            // Resolve CSS variable if needed
             let color = e.target.value;
             if (color.startsWith("var(")) {
                 const varName = color.match(/var\(([^)]+)\)/)[1];
                 color = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
             }
-            config.subGridColor = color;
-            fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
+            engine.updateConfig({ subGridColor: color });
+            redraw();
         });
 
         lInput.addEventListener("input", updateColorFromSliders);
@@ -1028,12 +839,12 @@ export function createAutoTrixel(rootElement) {
         hInput.addEventListener("input", updateColorFromSliders);
     }
 
-    // Palette logic moved to Vue component
+    // --- Background ---
 
     function resetCanvas() {
         try {
-            pushToHistory(saveStateForUndo());
-            gridData = {};
+            engine.pushToHistory(engine.saveSnapshot());
+            engine.resetCanvas();
             bgImage = {
                 img: null,
                 x: 0,
@@ -1041,7 +852,8 @@ export function createAutoTrixel(rootElement) {
                 scale: 1,
                 opacity: 0.5,
             };
-            fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
+            redraw();
+            updateUndoButton();
             notifyBgChange();
             showToast("Canvas & Background Cleared");
         } catch (e) {
@@ -1060,7 +872,7 @@ export function createAutoTrixel(rootElement) {
                 bgImage.x = 0;
                 bgImage.y = 0;
                 bgImage.scale = 1;
-                fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
+                redraw();
                 notifyBgChange();
                 showToast("Background Image Loaded");
             };
@@ -1074,7 +886,7 @@ export function createAutoTrixel(rootElement) {
         if (props.y !== undefined) bgImage.y = props.y;
         if (props.scale !== undefined) bgImage.scale = props.scale;
         if (props.opacity !== undefined) bgImage.opacity = props.opacity;
-        fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
+        redraw();
     }
 
     function setControlMode(mode) {
@@ -1094,18 +906,18 @@ export function createAutoTrixel(rootElement) {
     }
 
     function registerImage(id, imgElement) {
-        imageRegistry.set(id, imgElement);
+        engine.registerImage(id, imgElement);
     }
 
     function setCurrentImage(imageData) {
-        if (!imageRegistry.has(imageData.id)) {
-            registerImage(imageData.id, imageData.element);
+        if (!engine.getImageRegistry().has(imageData.id)) {
+            engine.registerImage(imageData.id, imageData.element);
         }
-        currentFill = {
+        engine.setFill({
             type: "image",
             imageId: imageData.id,
             src: imageData.src,
-        };
+        });
 
         colorPreviewBox.style.backgroundColor = "transparent";
         colorPreviewBox.style.backgroundImage = `url(${imageData.src})`;
@@ -1113,31 +925,39 @@ export function createAutoTrixel(rootElement) {
         colorPreviewBox.style.backgroundPosition = "center";
         colorCodeDisplay.innerText = "Image";
 
-        if (currentTool === "eraser" || currentTool === "picker" || currentTool === "subdivide") {
+        if (engine.getTool() === "eraser" || engine.getTool() === "picker" || engine.getTool() === "subdivide") {
             setTool("pencil");
         }
     }
 
+    // --- Init ---
+
     function init() {
         updateDimensions();
         setupEvents();
-        setupEvents();
-        // setupPalette(); // Moved to Vue
         updateUndoButton();
-        updateUndoButton();
-        updateColorUI(currentCssColor);
-
-        fullRedraw(artCtx, artCanvas, gridData, config, triHeight, W_half, bgImage, imageRegistry);
+        updateColorUI(engine.getCssColor());
+        redraw();
     }
 
     init();
+
+    // --- Public API (identical to original) ---
 
     return {
         select,
         updateDimensions,
         resetCanvas,
-        exportImage: () => exportImage(artCanvas, gridData, config, triHeight, W_half, exportGridToggle, showToast, imageRegistry),
-        exportSVG: () => exportSVG(artCanvas, gridData, config, triHeight, W_half, exportGridToggle, showToast),
+        exportImage: () => {
+            const config = engine.getConfig();
+            const { triHeight, W_half } = engine.getDerived();
+            exportImage(artCanvas, engine.getGridData(), config, triHeight, W_half, exportGridToggle, showToast, engine.getImageRegistry());
+        },
+        exportSVG: () => {
+            const config = engine.getConfig();
+            const { triHeight, W_half } = engine.getDerived();
+            exportSVG(artCanvas, engine.getGridData(), config, triHeight, W_half, exportGridToggle, showToast);
+        },
         destroy: () => {
             windowListeners.forEach((dispose) => dispose());
             windowListeners.length = 0;
@@ -1145,23 +965,50 @@ export function createAutoTrixel(rootElement) {
         registerImage,
         setCurrentImage,
         setCurrentImage,
-        // updatePalette: setupPalette, // Moved to Vue
-        // getPalette: () => currentPalette, // Moved to Vue
         onBgChange,
         onBgChange,
         updateBackground,
         setControlMode,
         setColor: (l, c, h) => {
-            colorState = { l, c, h };
-            const cssStr = `oklch(${Math.round(l * 100)}% ${c} ${Math.round(h)})`;
-            updateColorUI(cssStr);
+            engine.setColor(l, c, h);
+            updateColorUI(engine.getCssColor());
         },
         onColorChange: (cb) => {
             const originalUpdateColorUI = updateColorUI;
             updateColorUI = (cssString) => {
                 originalUpdateColorUI(cssString);
-                cb(colorState);
+                cb(engine.getColor());
             };
+        },
+        getState: () => engine.getState(),
+        loadState: (state) => {
+            const snapshot = engine.saveSnapshot();
+            engine.loadState(state);
+            engine.pushToHistory(snapshot);
+            updateDimensions();
+            updateUndoButton();
+            redraw();
+        },
+        exportImageAsBlob: () => {
+            const config = engine.getConfig();
+            const { triHeight, W_half } = engine.getDerived();
+            return exportImageAsBlob(artCanvas, engine.getGridData(), config, triHeight, W_half, engine.getImageRegistry());
+        },
+        exportSVGAsString: () => {
+            const config = engine.getConfig();
+            const { triHeight, W_half } = engine.getDerived();
+            return exportSVGAsString(artCanvas, engine.getGridData(), config, triHeight, W_half);
+        },
+        setTool,
+        undoAction,
+        zoomIn: () => performZoom(0.1),
+        zoomOut: () => performZoom(-0.1),
+        resetZoom: () => {
+            zoomLevel = 1;
+            panOffsetX = 0;
+            panOffsetY = 0;
+            updateCanvasTransform();
+            showToast('Zoom: 100%');
         },
     };
 }
