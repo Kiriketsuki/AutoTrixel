@@ -73,6 +73,10 @@ export function registerRun(program) {
 
             for (let i = 0; i < instructions.length; i++) {
                 const op = instructions[i];
+                if (op === null || op === undefined || typeof op !== "object") {
+                    process.stderr.write(`Error: operation ${i} is not a valid object\n`);
+                    process.exit(1);
+                }
 
                 switch (op.op) {
                     case "create": {
@@ -166,6 +170,10 @@ export function registerRun(program) {
                         const { format, output: exportOutput } = op;
                         if (!exportOutput || typeof exportOutput !== "string") {
                             process.stderr.write(`Error: operation ${i} (export) requires an "output" value\n`);
+                            process.exit(1);
+                        }
+                        if (!format || typeof format !== "string") {
+                            process.stderr.write(`Error: operation ${i} (export) requires a "format" value\n`);
                             process.exit(1);
                         }
                         if (format !== "svg" && format !== "png") {
