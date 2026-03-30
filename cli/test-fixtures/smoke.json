@@ -2,5 +2,5 @@
   { "op": "create", "rows": 5, "cols": 5 },
   { "op": "paint", "cell": "2,3", "color": "#ff0000" },
   { "op": "paint", "cell": "1,2", "color": "oklch(60% 0.15 200)" },
-  { "op": "export", "format": "svg", "output": "/tmp/trkixel-test-smoke.svg" }
+  { "op": "export", "format": "svg", "output": "test-out/smoke.svg" }
 ]

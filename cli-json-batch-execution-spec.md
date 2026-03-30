@@ -150,7 +150,7 @@ Feature: cli-json-batch-execution
 
 | ID   | Task | Priority | Dependencies | Status  |
 |:-----|:-----|:---------|:-------------|:--------|
-| T1   | Create test instruction files (smoke, fill, palette, error cases) | High | None | pending |
+| T1   | Create test instruction files (smoke, fill, palette, error cases) | High | None | done |
 | T2   | Run smoke test: create + paint + SVG export | High | T1 | pending |
 | T3   | Run flood fill test | High | T1 | pending |
 | T4   | Run palette import test (needs a sample .gpl file) | High | T1 | pending |
@@ -162,6 +162,8 @@ Feature: cli-json-batch-execution
 ---
 
 ## Exit Criteria
+
+> These criteria and tasks T2–T8 are scoped to the follow-on implementation PR, not to the preparatory PR that landed the spec and fixtures.
 
 - [ ] All must-have acceptance scenarios pass (manual CLI verification)
 - [ ] All error paths exit with code 1 and descriptive stderr
