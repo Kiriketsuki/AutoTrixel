@@ -1,33 +1,39 @@
 <script setup>
     import { onBeforeUnmount, onMounted, ref, shallowRef } from "vue";
-    import { createAutoTrixel } from "./logic/createAutoTrixel";
+    import { createTrKixel } from "./logic/createTrKixel";
     import Sidebar from "./components/Sidebar.vue";
+    import { initMenuHandler } from "./tauri/menu-handler.js";
 
     const appRoot = ref(null);
     const controlMode = ref("canvas"); // 'canvas' or 'background'
     const bgState = ref({ x: 0, y: 0, scale: 1, opacity: 0.5 });
-    const autoTrixelInstance = shallowRef(null);
+    const trKixelInstance = shallowRef(null);
 
     const updateBg = (prop, val) => {
         const numVal = parseFloat(val);
         bgState.value[prop] = numVal;
-        autoTrixelInstance.value?.updateBackground({ [prop]: numVal });
+        trKixelInstance.value?.updateBackground({ [prop]: numVal });
     };
 
     const setControlMode = (mode) => {
         controlMode.value = mode;
-        autoTrixelInstance.value?.setControlMode(mode);
+        trKixelInstance.value?.setControlMode(mode);
     };
 
-    onMounted(() => {
-        autoTrixelInstance.value = createAutoTrixel(appRoot.value);
-        autoTrixelInstance.value.onBgChange((newState) => {
+    onMounted(async () => {
+        trKixelInstance.value = createTrKixel(appRoot.value);
+        trKixelInstance.value.onBgChange((newState) => {
             bgState.value = { ...newState };
         });
+
+        const isTauri = '__TAURI__' in window || '__TAURI_INTERNALS__' in window;
+        if (isTauri) {
+            await initMenuHandler(trKixelInstance.value);
+        }
     });
 
     onBeforeUnmount(() => {
-        autoTrixelInstance.value?.destroy();
+        trKixelInstance.value?.destroy();
     });
 </script>
 
@@ -36,7 +42,7 @@
         class="flex h-full overflow-hidden touch-none"
         ref="appRoot">
         <Sidebar
-            :autoTrixelInstance="autoTrixelInstance"
+            :trKixelInstance="trKixelInstance"
             :bgState="bgState"
             :controlMode="controlMode"
             @updateBg="updateBg"

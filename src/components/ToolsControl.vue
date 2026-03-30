@@ -3,15 +3,15 @@
     import ControlSection from "./ControlSection.vue";
 
     const props = defineProps({
-        autoTrixelInstance: Object,
+        trKixelInstance: Object,
     });
 
     const setTool = (tool) => {
-        props.autoTrixelInstance?.setTool(tool);
+        props.trKixelInstance?.setTool(tool);
     };
 
     const undoAction = () => {
-        props.autoTrixelInstance?.undoAction();
+        props.trKixelInstance?.undoAction();
     };
 </script>
 

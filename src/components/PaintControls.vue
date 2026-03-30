@@ -7,7 +7,7 @@
     import { hexToOklchVals, oklchToHex } from "../logic/autotrixel/utils.js";
 
     const props = defineProps({
-        autoTrixelInstance: Object,
+        trKixelInstance: Object,
     });
 
     const fileInput = ref(null);
@@ -38,15 +38,15 @@
 
     const updateAppColor = (newColor) => {
         currentColor.value = newColor;
-        if (props.autoTrixelInstance) {
-            props.autoTrixelInstance.setColor(newColor.l, newColor.c, newColor.h);
+        if (props.trKixelInstance) {
+            props.trKixelInstance.setColor(newColor.l, newColor.c, newColor.h);
         }
     };
 
     // Sync from app to local state (e.g. when picking color from canvas)
     let colorChangeListener = null;
     watch(
-        () => props.autoTrixelInstance,
+        () => props.trKixelInstance,
         (instance) => {
             if (instance) {
                 colorChangeListener = (colorState) => {
@@ -82,8 +82,8 @@
                     images.value.push(imageData);
                     selectImage(imageData);
 
-                    if (props.autoTrixelInstance) {
-                        props.autoTrixelInstance.registerImage(id, img);
+                    if (props.trKixelInstance) {
+                        props.trKixelInstance.registerImage(id, img);
                     }
                 };
                 img.src = e.target.result;
@@ -119,7 +119,7 @@
     };
 
     const exportPalette = () => {
-        if (props.autoTrixelInstance) {
+        if (props.trKixelInstance) {
             const colors = paletteColors.value;
             const content = generateGPL(colors, paletteName.value);
             const blob = new Blob([content], { type: "text/plain" });
@@ -133,8 +133,8 @@
     };
 
     const selectImage = (image) => {
-        if (props.autoTrixelInstance) {
-            props.autoTrixelInstance.setCurrentImage(image);
+        if (props.trKixelInstance) {
+            props.trKixelInstance.setCurrentImage(image);
         }
     };
 

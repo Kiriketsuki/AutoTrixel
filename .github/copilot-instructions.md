@@ -1,8 +1,8 @@
-# GitHub Copilot Instructions for AutoTrixel
+# GitHub Copilot Instructions for TrKixel
 
 ## Project Overview
 
-AutoTrixel is a web-based triangle-pixel art engine that renders images using triangular pixels instead of traditional square pixels. The system allows users to create and manipulate triangle-based pixel art through an interactive web interface.
+TrKixel is a web-based triangle-pixel art engine that renders images using triangular pixels instead of traditional square pixels. The system allows users to create and manipulate triangle-based pixel art through an interactive web interface.
 
 ## Repository Structure
 
@@ -90,7 +90,7 @@ Output triangle-pixel art in various formats:
 
 ### Adding New Features
 
-1. **Rendering Logic**: Add/update logic in `src/logic/createAutoTrixel.js`
+1. **Rendering Logic**: Add/update logic in `src/logic/createTrKixel.js`
 2. **UI Components**: Create/update Vue components in `src/components/`
 3. **Styling**: Use Tailwind utilities in component templates
 4. **Testing**: Test across different browsers and devices
