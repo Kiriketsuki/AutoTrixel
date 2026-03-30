@@ -5,7 +5,7 @@ function parseOklch(colorStr) {
     // "oklch(60% 0.15 200)" or "oklch(0.6 0.15 200)"
     const inner = colorStr.slice("oklch(".length, -1).trim();
     const parts = inner.split(/\s+/);
-    if (parts.length < 3) return null;
+    if (parts.length !== 3) return null;
     let l = parseFloat(parts[0]);
     if (parts[0].endsWith("%")) l = l / 100;
     const c = parseFloat(parts[1]);
