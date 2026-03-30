@@ -38,7 +38,7 @@
 - **Error path: missing create**: Paint op without prior create exits with code 1 and descriptive stderr.
 - **Error path: out-of-bounds cell**: Paint op targeting cell beyond grid dimensions exits with code 1 and stderr contains "out of bounds".
 - **Error path: bad JSON**: Malformed instruction file exits with code 1 and descriptive stderr.
-- **State file round-trip**: Output `.trkixel.json` from a batch can be loaded back by another batch (via a second `run` that reads the state).
+- **State file round-trip**: Output `.trkixel.json` from a batch is valid JSON with the correct schema (version, config, gridData, palette keys), verifiable via key-structure inspection.
 - **Bug fixes**: Any bugs discovered during testing are fixed inline.
 
 ### Should-Have
