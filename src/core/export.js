@@ -1,4 +1,4 @@
-import { getTrianglePath, getTriangleVertices } from "../logic/autotrixel/geometry.js";
+import { getTriangleVertices } from "../logic/autotrixel/geometry.js";
 import { validateAdapter } from "./canvas-adapter.js";
 
 // TODO: renderGridDataToContext duplicates rendering logic from src/logic/autotrixel/export.js (L:17-100).
@@ -45,16 +45,26 @@ function renderGridDataToContext(ctx, gridData, config, triHeight, W_half, image
         const colorOrData = gridData[key];
 
         if (typeof colorOrData === "string") {
-            const path = getTrianglePath(r, c, triHeight, W_half);
+            const vertices = getTriangleVertices(r, c, triHeight, W_half);
+            ctx.beginPath();
+            ctx.moveTo(vertices[0].x, vertices[0].y);
+            ctx.lineTo(vertices[1].x, vertices[1].y);
+            ctx.lineTo(vertices[2].x, vertices[2].y);
+            ctx.closePath();
             ctx.fillStyle = colorOrData;
-            ctx.fill(path);
+            ctx.fill();
             ctx.strokeStyle = colorOrData;
             ctx.lineWidth = 0.5;
-            ctx.stroke(path);
+            ctx.stroke();
         } else if (colorOrData && colorOrData.type === "image") {
-            const path = getTrianglePath(r, c, triHeight, W_half);
+            const vertices = getTriangleVertices(r, c, triHeight, W_half);
             ctx.save();
-            ctx.clip(path);
+            ctx.beginPath();
+            ctx.moveTo(vertices[0].x, vertices[0].y);
+            ctx.lineTo(vertices[1].x, vertices[1].y);
+            ctx.lineTo(vertices[2].x, vertices[2].y);
+            ctx.closePath();
+            ctx.clip();
 
             const img = imageRegistry ? imageRegistry.get(colorOrData.imageId) : null;
             if (img) {
