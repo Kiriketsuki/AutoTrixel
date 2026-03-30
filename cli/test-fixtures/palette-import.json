@@ -1,0 +1,4 @@
+[
+  { "op": "create", "rows": 3, "cols": 3 },
+  { "op": "palette", "import": "cli/test-fixtures/palette.gpl" }
+]

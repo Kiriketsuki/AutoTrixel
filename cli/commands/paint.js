@@ -18,7 +18,7 @@ function parseOklch(oklchStr) {
     // e.g. "oklch(60% 0.15 200)"
     const inner = oklchStr.slice(6, -1).trim();
     const parts = inner.split(/\s+/);
-    if (parts.length < 3) return null;
+    if (parts.length !== 3) return null;
 
     const lStr = parts[0];
     const c = parseFloat(parts[1]);

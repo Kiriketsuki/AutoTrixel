@@ -1,0 +1,4 @@
+[
+  { "op": "create", "rows": 5, "cols": 5 },
+  { "op": "paint", "cell": "99,99", "color": "#ff0000" }
+]

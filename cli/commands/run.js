@@ -1,4 +1,5 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile, writeFile, mkdir } from "node:fs/promises";
+import { dirname } from "node:path";
 import { createEngine } from "../../src/core/engine.js";
 import { renderPNG, renderSVG } from "../../src/core/export.js";
 import { createNodeCanvasAdapter } from "../../src/core/adapters/node.js";
@@ -181,6 +182,7 @@ export function registerRun(program) {
                             process.exit(1);
                         }
                         try {
+                            await mkdir(dirname(exportOutput), { recursive: true });
                             if (format === "svg") {
                                 const svg = renderSVG(engine);
                                 await writeFile(exportOutput, svg, "utf-8");
@@ -231,6 +233,7 @@ export function registerRun(program) {
             }
 
             try {
+                await mkdir(dirname(output), { recursive: true });
                 await saveState(output, engineStateToFileState(engine, palette));
                 process.stdout.write(`Saved final state to ${output}\n`);
             } catch (err) {
