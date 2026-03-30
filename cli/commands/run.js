@@ -104,6 +104,14 @@ export function registerRun(program) {
                             process.stderr.write(`Error: operation ${i} (paint) requires a "create" op first\n`);
                             process.exit(1);
                         }
+                        if (!op.cell || typeof op.cell !== "string") {
+                            process.stderr.write(`Error: operation ${i} (paint) requires a "cell" value\n`);
+                            process.exit(1);
+                        }
+                        if (!op.color || typeof op.color !== "string") {
+                            process.stderr.write(`Error: operation ${i} (paint) requires a "color" value\n`);
+                            process.exit(1);
+                        }
                         const cell = parseCell(op.cell);
                         if (!cell) {
                             process.stderr.write(`Error: operation ${i} (paint) has invalid cell "${op.cell}"\n`);
@@ -124,6 +132,14 @@ export function registerRun(program) {
                     case "fill": {
                         if (!engine) {
                             process.stderr.write(`Error: operation ${i} (fill) requires a "create" op first\n`);
+                            process.exit(1);
+                        }
+                        if (!op.cell || typeof op.cell !== "string") {
+                            process.stderr.write(`Error: operation ${i} (fill) requires a "cell" value\n`);
+                            process.exit(1);
+                        }
+                        if (!op.color || typeof op.color !== "string") {
+                            process.stderr.write(`Error: operation ${i} (fill) requires a "color" value\n`);
                             process.exit(1);
                         }
                         const cell = parseCell(op.cell);
@@ -148,6 +164,10 @@ export function registerRun(program) {
                             process.exit(1);
                         }
                         const { format, output: exportOutput } = op;
+                        if (!exportOutput || typeof exportOutput !== "string") {
+                            process.stderr.write(`Error: operation ${i} (export) requires an "output" value\n`);
+                            process.exit(1);
+                        }
                         if (format !== "svg" && format !== "png") {
                             process.stderr.write(`Error: operation ${i} (export) has unsupported format "${format}"\n`);
                             process.exit(1);
