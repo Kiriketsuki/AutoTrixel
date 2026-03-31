@@ -46,7 +46,12 @@ export async function saveFile(engine) {
     const state = engine.getState();
     state.config = engineConfigToState(state.config);
     state.palette = getPalette();
-    await writeTextFile(path, JSON.stringify(state, null, 2));
+    try {
+        await writeTextFile(path, JSON.stringify(state, null, 2));
+    } catch (err) {
+        await message(`Could not save file: ${err}`, { title: 'Save Failed', kind: 'error' });
+        return;
+    }
     markClean();
 }
 
@@ -60,7 +65,12 @@ export async function saveFileAs(engine) {
     const state = engine.getState();
     state.config = engineConfigToState(state.config);
     state.palette = getPalette();
-    await writeTextFile(path, JSON.stringify(state, null, 2));
+    try {
+        await writeTextFile(path, JSON.stringify(state, null, 2));
+    } catch (err) {
+        await message(`Could not save file: ${err}`, { title: 'Save Failed', kind: 'error' });
+        return;
+    }
     setCurrentPath(path);
     markClean();
 }
