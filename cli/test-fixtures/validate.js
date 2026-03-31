@@ -98,7 +98,7 @@ try {
   if (fs.existsSync(svgPath)) {
     const svgContent = fs.readFileSync(svgPath, "utf-8");
     const polygonCount = (svgContent.match(/<polygon/g) ?? []).length;
-    check("T2 smoke.svg contains <polygon (≥2)", polygonCount >= 2);
+    check("T2 smoke.svg contains exactly 2 <polygon", polygonCount === 2);
   }
 } catch (err) {
   check("T2 command exited with code 0", false);
@@ -235,14 +235,8 @@ const smokeStatePath = "test-out/smoke-state.trkixel.json";
 if (!fs.existsSync(smokeStatePath)) {
   console.log("[SKIP] T6 skipped — smoke-state.trkixel.json missing (T2 failed)");
 } else {
-  let state;
-  try {
-    state = readJSON(smokeStatePath);
-    check("T6 state is valid JSON", true);
-  } catch {
-    check("T6 state is valid JSON", false);
-    state = null;
-  }
+  // T2 already parsed this file; re-read here for T6's independent schema checks
+  const state = readJSON(smokeStatePath);
 
   if (state) {
     const topKeys = ["version", "config", "gridData", "palette"];
