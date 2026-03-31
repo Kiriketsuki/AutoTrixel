@@ -68,7 +68,6 @@ function renderGridDataToContext(ctx, gridData, config, triHeight, W_half, image
 
             const img = imageRegistry ? imageRegistry.get(colorOrData.imageId) : null;
             if (img) {
-                const vertices = getTriangleVertices(r, c, triHeight, W_half);
                 const minX = Math.min(vertices[0].x, vertices[1].x, vertices[2].x);
                 const maxX = Math.max(vertices[0].x, vertices[1].x, vertices[2].x);
                 const minY = Math.min(vertices[0].y, vertices[1].y, vertices[2].y);
