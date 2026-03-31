@@ -40,6 +40,10 @@ export async function initMenuHandler(engine) {
                 engine.undoAction();
                 break;
 
+            case 'redo':
+                engine.redoAction();
+                break;
+
             case 'zoom-in':
                 engine.zoomIn();
                 break;
