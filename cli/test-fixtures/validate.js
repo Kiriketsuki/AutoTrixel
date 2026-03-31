@@ -15,6 +15,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 let passed = 0;
 let failed = 0;
+let skipped = 0;
 
 function check(description, ok) {
   if (ok) {
@@ -284,6 +285,7 @@ try {
 
 if (!canvasAvailable) {
   console.log("[SKIP] T8 skipped — canvas package not installed");
+  skipped += 4;
 } else {
   try {
     run(
@@ -312,6 +314,6 @@ if (!canvasAvailable) {
 
 const total = passed + failed;
 console.log(`\n${"─".repeat(40)}`);
-console.log(`Total: ${total}  Passed: ${passed}  Failed: ${failed}`);
+console.log(`Total: ${total}  Passed: ${passed}  Failed: ${failed}${skipped > 0 ? `  Skipped: ${skipped}` : ""}`);
 
 process.exit(failed > 0 ? 1 : 0);
