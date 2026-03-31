@@ -127,12 +127,13 @@ export function renderPNG(engine, adapter) {
 
 /**
  * Render grid data to an SVG string using the headless engine.
- * Note: grid-line overlay is not supported in headless mode — the browser
- * export's grid-line toggle (exportGridToggle) has no headless equivalent.
- * For full SVG feature parity including grid lines, use exportSVGAsString
- * via createTrKixel (src/logic/autotrixel/export.js).
+ * @param {object} engine - The headless engine instance.
+ * @param {object} [gridOptions] - Optional grid overlay settings.
+ * @param {boolean} [gridOptions.includeGrid=false] - When true, appends grid-line SVG elements
+ *   (horizontal lines and triangle edge polylines). Capped at 400 000 triangles to avoid
+ *   generating excessively large SVG output.
  */
-export function renderSVG(engine) {
+export function renderSVG(engine, gridOptions = {}) {
     const config = engine.getConfig();
     const gridData = engine.getGridData();
     const { triHeight, W_half } = engine.getDerived();
@@ -189,6 +190,31 @@ export function renderSVG(engine) {
             svg += generateRecursiveSvg(vertices[0], vertices[1], vertices[2], colorOrData);
         }
     });
+
+    if (gridOptions.includeGrid && config.widthTriangles * config.heightTriangles <= 400_000) {
+        const gridColor = config.gridColor;
+
+        for (let r = 0; r <= config.heightTriangles; r++) {
+            const y = r * triHeight;
+            svg += `<line x1="0" y1="${y}" x2="${w}" y2="${y}" stroke="${gridColor}" stroke-width="0.5"/>`;
+        }
+
+        for (let r = 0; r < config.heightTriangles; r++) {
+            for (let c = 0; c < config.widthTriangles; c++) {
+                const xBase = c * W_half;
+                const yBase = r * triHeight;
+                const isUp = r % 2 === Math.abs(c) % 2;
+
+                let p = "";
+                if (isUp) {
+                    p = `${xBase},${yBase + triHeight} ${xBase + W_half},${yBase} ${xBase + 2 * W_half},${yBase + triHeight}`;
+                } else {
+                    p = `${xBase},${yBase} ${xBase + W_half},${yBase + triHeight} ${xBase + 2 * W_half},${yBase}`;
+                }
+                svg += `<polyline points="${p}" fill="none" stroke="${gridColor}" stroke-width="0.5"/>`;
+            }
+        }
+    }
 
     svg += "</svg>";
     return svg;
