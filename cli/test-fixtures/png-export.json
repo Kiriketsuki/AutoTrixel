@@ -1,0 +1,5 @@
+[
+  { "op": "create", "rows": 5, "cols": 5 },
+  { "op": "paint", "cell": "2,3", "color": "#ff0000" },
+  { "op": "export", "format": "png", "output": "test-out/smoke.png" }
+]
