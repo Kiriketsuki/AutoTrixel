@@ -1,0 +1,61 @@
+name: Tauri PR Check
+
+on:
+    pull_request:
+        branches:
+            - main
+            - release
+            - "epic/**"
+
+jobs:
+    check:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v6
+
+            - name: Install system dependencies
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v5
+              with:
+                  node-version: "20"
+                  cache: "npm"
+
+            - name: Setup Rust
+              uses: dtolnay/rust-toolchain@stable
+
+            - name: Cache Cargo registry
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      ~/.cargo/bin/
+                      ~/.cargo/registry/index/
+                      ~/.cargo/registry/cache/
+                      ~/.cargo/git/db/
+                  key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+                  restore-keys: |
+                      ${{ runner.os }}-cargo-registry-
+
+            - name: Cache Cargo build target
+              uses: actions/cache@v4
+              with:
+                  path: src-tauri/target
+                  key: ${{ runner.os }}-cargo-target-check-${{ hashFiles('**/Cargo.lock') }}-${{ hashFiles('src-tauri/src/**') }}
+                  restore-keys: |
+                      ${{ runner.os }}-cargo-target-check-${{ hashFiles('**/Cargo.lock') }}-
+                      ${{ runner.os }}-cargo-target-
+
+            - name: Install JS dependencies
+              run: npm ci
+
+            - name: Check frontend build
+              run: npm run build
+
+            - name: Check Rust compilation
+              working-directory: src-tauri
+              run: cargo check
