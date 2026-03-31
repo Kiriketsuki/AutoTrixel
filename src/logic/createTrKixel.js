@@ -1,8 +1,9 @@
 import { REQUIRED_SELECTORS } from "./autotrixel/constants.js";
 import { clamp, hexToOklchVals } from "./autotrixel/utils.js";
 import { getTriangleVertices, getBarycentric } from "./autotrixel/geometry.js";
-import { fullRedraw, drawCursor } from "./autotrixel/drawing.js";
-import { exportImage, exportSVG, exportImageAsBlob, exportSVGAsString } from "./autotrixel/export.js";
+import { fullRedraw, drawCursor, drawGridLines } from "./autotrixel/drawing.js";
+import { renderSVG, renderToCanvas } from "../core/export.js";
+import { createBrowserCanvasAdapter } from "../core/adapters/browser.js";
 import { createEngine } from "../core/engine.js";
 
 export function createTrKixel(rootElement) {
@@ -71,6 +72,7 @@ export function createTrKixel(rootElement) {
     // --- Core engine ---
 
     const engine = createEngine();
+    const browserAdapter = createBrowserCanvasAdapter();
 
     // --- Browser-only state ---
 
@@ -150,6 +152,15 @@ export function createTrKixel(rootElement) {
             clearTimeout(toastTimeout);
         }
         toastTimeout = window.setTimeout(() => toast.classList.remove("show"), 1500);
+    }
+
+    function triggerDownload(blob, filename) {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.download = filename;
+        link.href = url;
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 100);
     }
 
     function updateUndoButton() {
@@ -951,12 +962,22 @@ export function createTrKixel(rootElement) {
         exportImage: () => {
             const config = engine.getConfig();
             const { triHeight, W_half } = engine.getDerived();
-            exportImage(artCanvas, engine.getGridData(), config, triHeight, W_half, exportGridToggle, showToast, engine.getImageRegistry());
+            const canvas = renderToCanvas(engine, browserAdapter);
+            if (exportGridToggle.checked) {
+                const ctx = canvas.getContext("2d");
+                drawGridLines(ctx, canvas, config, triHeight, W_half);
+            }
+            canvas.toBlob((blob) => {
+                if (!blob) return;
+                triggerDownload(blob, "tripixel-art.png");
+                showToast("Image Saved!");
+            }, "image/png");
         },
         exportSVG: () => {
-            const config = engine.getConfig();
-            const { triHeight, W_half } = engine.getDerived();
-            exportSVG(artCanvas, engine.getGridData(), config, triHeight, W_half, exportGridToggle, showToast);
+            const svg = renderSVG(engine, { includeGrid: exportGridToggle.checked });
+            const blob = new Blob([svg], { type: "image/svg+xml" });
+            triggerDownload(blob, "tripixel-art.svg");
+            showToast("SVG Saved!");
         },
         destroy: () => {
             windowListeners.forEach((dispose) => dispose());
@@ -990,14 +1011,11 @@ export function createTrKixel(rootElement) {
             redraw();
         },
         exportImageAsBlob: () => {
-            const config = engine.getConfig();
-            const { triHeight, W_half } = engine.getDerived();
-            return exportImageAsBlob(artCanvas, engine.getGridData(), config, triHeight, W_half, engine.getImageRegistry());
+            const canvas = renderToCanvas(engine, browserAdapter);
+            return browserAdapter.canvasToBlob(canvas);
         },
         exportSVGAsString: () => {
-            const config = engine.getConfig();
-            const { triHeight, W_half } = engine.getDerived();
-            return exportSVGAsString(artCanvas, engine.getGridData(), config, triHeight, W_half);
+            return renderSVG(engine);
         },
         setTool,
         undoAction,
