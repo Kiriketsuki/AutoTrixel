@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Acceptance criteria validator for T2–T6 batch validation tasks.
+ * Acceptance criteria validator for T2–T8 batch validation tasks (T8 requires canvas).
  * Run from repo root: node cli/test-fixtures/validate.js
  */
 
@@ -276,6 +276,9 @@ if (!fs.existsSync(smokeStatePath)) {
 }
 
 // ── T8: PNG export (optional — skips if canvas not installed) ────────────────
+// Requires: npm install canvas (native build — needs Cairo + Pango headers)
+//   Arch Linux: sudo pacman -S cairo pango
+//   Debian/Ubuntu: sudo apt install libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
 
 console.log("\n=== T8: PNG export ===");
 
