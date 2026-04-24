@@ -10,6 +10,19 @@ body:
 
               Sub-issues (features or bugs) tracked inside a Task will automatically branch from the task branch.
 
+    - type: input
+      id: branch_off
+      attributes:
+          label: Branch off
+          description: |
+              Optional. Override the auto-handler base branch. Defaults to `main`
+              (or to the parent issue's branch when sub-issue tracking applies).
+              Set to a specific branch to branch off in-flight work instead.
+          placeholder: main
+          value: main
+      validations:
+          required: false
+
     - type: textarea
       id: description
       attributes:
